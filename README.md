@@ -8,14 +8,14 @@ project/
 │   ├── simulation_panel_window_ui.py
 │   └── resources_rc.py         # Convert từ resources.qrc
 │
-│── windows/                     # Các class cửa sổ PyQt, kết nối UI + logic
+│── windows/                     # Các class cửa sổ PyQt, xử lý slot/event
 │   ├── main_window.py
 │   ├── input_config_window.py
 │   ├── model_params_window.py
 │   ├── visualization_window.py
 │   └── simulation_panel_window.py
 │
-│── logic/                       # Xử lý thuật toán, controller, plotting
+│── control_sys/                       # Xử lý thuật toán, controller, plotting
 │   ├── narma_model.py           # Thuật toán NARMA-L2
 │   ├── controller.py            # Logic điều khiển, gọi model
 │   └── plot_engine.py           # Matplotlib embed vào PyQt
