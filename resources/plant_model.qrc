@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="model_config">
+    <file>images/tf_mockup.png</file>
+    <file>images/dc_motor.png</file>
+    <file>images/dc_transfer_function.png</file>
+  </qresource>
+</RCC>
