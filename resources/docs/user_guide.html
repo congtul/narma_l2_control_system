@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Guide – Intelligent Control System using NARMA-L2</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+      background-color: #f9fafc;
+      color: #222;
+      margin: 30px;
+    }
+    h1, h2 {
+      color: #003366;
+    }
+    h3 {
+      color: #004b87;
+    }
+    code, pre {
+      background: #eef2f6;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-family: "Consolas", monospace;
+    }
+    .section {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    a {
+      color: #0078d7;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Welcome to the Learning Application on Intelligent Control Systems using the NARMA-L2 Model</h1>
+
+<p>
+Welcome to our educational software for intelligent control systems.  
+This application is designed for learners who wish to understand the essential functional blocks of an intelligent control system.  
+To make the system operation easier to visualize, we use a DC motor as the default simulation model.  
+However, if you want to simulate another control plant, feel free to use our tool – it is fully customizable.  
+Below is a detailed explanation of how our system works.
+</p>
+
+<p>
+Before diving into the four main components, please define the sampling time in the <b>Ts</b> field.  
+This parameter will be synchronized across all blocks in the system.
+</p>
+
+<div class="section">
+  <h2>1. Desired Signal</h2>
+  <ul>
+    <li>This is where you define the desired output values of the plant over time.</li>
+    <li>You can refer to various <a href="https://www.pmdcorp.com/resources/type/articles/get/s-curve-profiles-deep-dive-article" target="_blank">motion planning</a> methods for motor speed trajectory design.</li>
+  </ul>
+
+  <h3>Supported Modes</h3>
+  <ul>
+    <li><b>Normal Mode:</b>
+      <ul>
+        <li><b>Random Generator:</b> Generates random desired signals.  
+        For safety, please provide the <b>minimum</b> and <b>maximum</b> output range of your control plant (e.g., maximum motor speed).</li>
+        <li><b>Manual Generator:</b> Only step generators are supported.  
+        Please input two arrays: <code>step_time</code> and <code>step_value</code>.  
+        Example:<br>
+        <code>step_time = [0, 1, 2, 3]</code><br>
+        <code>step_value = [0.1, -0.2, 0.3, 1]</code><br>
+        The generator will produce output = 0.1 for t&lt;1, output = -0.2 for 1&lt;t&lt;2, etc.</li>
+      </ul>
+    </li>
+    <li><b>Manual Mode:</b>  
+    In this mode, you can fully define how the reference signal changes over time by editing a pre-defined function.  
+    Please do not change the function name, input parameters, or output variable to maintain framework compatibility.
+    <pre><code>def generator(t):
+    # User-defined reference signal
+    # Example:
+    # output = sin(t)
+    # End User-defined reference signal
+    return output
+    </code></pre>
+    </li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>2. Controller Block using NARMA-L2 Model</h2>
+  <p>
+    This block allows you to design a controller based on the <b>NARMA-L2 model</b>, which is developed from <b>Artificial Neural Networks (NARMA-L2)</b>.
+    If you are not familiar with this concept, please refer to:
+    <a href="https://ww2.mathworks.cn/help/deeplearning/ug/design-narma-l2-neural-controller-in-simulink.html" target="_blank">MathWorks NARMA-L2 Controller Documentation</a>.
+  </p>
+
+  <ul>
+    <li>For a quick demonstration of how this model works, you can press the <b>“Default”</b> button at the bottom.  
+        This will automatically load our model’s predefined parameters.  
+        You may skip the remaining steps if you just want to see a mock-up result.  
+        However, it’s recommended to adjust the parameters to match your specific control requirements.</li>
+
+    <li>Enter your desired NARMA-L2 architecture configuration, including:  
+        <i>Number of hidden layers</i>, <i>Number of delayed plant inputs</i>, and <i>Number of delayed plant outputs</i>.</li>
+
+    <li>If you already have pre-trained network weights, you can skip the training step.  
+        Use the <b>“Import Network Weights”</b> button to load them.  
+        Once successfully imported, a confirmation window will appear, and you may proceed directly to testing.</li>
+
+    <li>If you don’t have weights yet, it is highly recommended to train your model offline first using the <b>Training Data</b> section.</li>
+
+    <li>If no dataset is available, you can either generate one using the <b>“Generate Data”</b> button or import an existing dataset via <b>“Import Data”</b>.</li>
+
+    <li>Once a dataset is ready, the <b>“Train Network”</b> button will become active, allowing you to start the NARMA-L2 training process.</li>
+
+    <li>After training is complete, an evaluation window will appear where you can review the model’s performance.  
+        Once satisfied with the results, click <b>“OK”</b> to confirm and apply the trained weights to your model.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>3. Plant Model (Controlled Object)</h2>
+  <ul>
+    <li>If you are working with a DC motor, please input the corresponding motor parameters.</li>
+    <li>If you want to test another control plant, check the <b>“Custom Mode”</b> box and input your own transfer function.</li>
+    <li>Both methods will generate the final transfer function used by the control system.  
+      Click <b>“Save”</b> to confirm and close the configuration.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>4. Output Graph Block</h2>
+  <p>
+    After all configurations are done, press the <b>Start</b> button and observe the results in the graph block.  
+    The system will display the reference tracking response, actual output, and key performance metrics such as rise time, overshoot, and steady-state error.
+  </p>
+</div>
+
+<div class="section">
+  <h2>Final Note</h2>
+  <p>
+    We hope this tool helps you in learning and experimenting with intelligent control systems using the NARMA-L2 model.  
+    Wishing you success in your research and exploration!
+  </p>
+</div>
+
+</body>
+</html>
