@@ -11,18 +11,9 @@ class InputWindow(QtWidgets.QMainWindow, Ui_Input):
         self.setupUi(self)
         self.setWindowTitle("Input Window")
 
-        # install double-click filters for its own buttons
-        self.Normal_mode_btn.installEventFilter(self)
-        self.Advance_mode_btn.installEventFilter(self)
-
-    def eventFilter(self, obj, event):
-        if event.type() == QtCore.QEvent.MouseButtonDblClick and event.button() == QtCore.Qt.LeftButton:
-            if obj == self.Normal_mode_btn:
-                self.open_normal_mode()
-            elif obj == self.Advance_mode_btn:
-                self.open_advance_mode()
-            return True
-        return super().eventFilter(obj, event)
+        # connect button clicks (single click)
+        self.Normal_mode_btn.clicked.connect(self.open_normal_mode)
+        self.Advance_mode_btn.clicked.connect(self.open_advance_mode)
 
     def open_normal_mode(self):
         self.normal_window = NormalModeWindow(self)
@@ -35,7 +26,6 @@ class InputWindow(QtWidgets.QMainWindow, Ui_Input):
         self.hide()
 
 if __name__ == "__main__":
-    import sys
     app = QtWidgets.QApplication(sys.argv)
     win = InputWindow()
     win.show()
