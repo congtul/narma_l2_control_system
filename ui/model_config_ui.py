@@ -232,7 +232,7 @@ class Ui_MainWindow(object):
         self.pushButton.setText(_translate("MainWindow", "Import Network Weight"))
         self.label_10.setText(_translate("MainWindow", "Min Plant Output"))
         self.label_11.setText(_translate("MainWindow", "Max Plant Output"))
-        self.label_12.setText(_translate("MainWindow", "Max Interval (sec)"))
+        self.label_12.setText(_translate("MainWindow", "Min Interval (sec)"))
         self.pushButton_2.setText(_translate("MainWindow", "Generate Data"))
         self.pushButton_3.setText(_translate("MainWindow", "Export Data"))
         self.pushButton_4.setText(_translate("MainWindow", "Import Data"))
