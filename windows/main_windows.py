@@ -119,23 +119,59 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
     def start_simulation(self):
         """Bắt đầu giả lập dữ liệu real-time cho OutputGraphWindow"""
-        # self.sim_index = 0
-        # self.output_window.show()
-        self.sim_timer.start(50)  # mỗi 50 ms gửi 1 sample
-        print("[INFO] Simulation started.")
+        # Lấy thời gian chạy từ QLineEdit
+        try:
+            run_time = float(self.Run_time_input.text())
+            if run_time <= 0:
+                raise ValueError
+        except ValueError:
+            QtWidgets.QMessageBox.warning(self, "Invalid Input", "Please enter a valid positive run time (seconds).")
+            self.running = False
+            self.update_run_button()
+            return
+        
+        # Reset chỉ số mô phỏng
+        self.sim_index = 0
 
+        # Bắt đầu timer mô phỏng (mỗi 50 ms)
+        self.sim_timer.start(50)
+
+        # === Thêm timer dừng mô phỏng sau run_time giây ===
+        self.stop_timer = QtCore.QTimer(self)
+        self.stop_timer.setSingleShot(True)
+        self.stop_timer.timeout.connect(self.stop_simulation)
+        self.stop_timer.start(int(run_time * 1000))  # đổi giây -> mili giây
+
+        print(f"[INFO] Simulation started for {run_time} seconds.")
+    
     def stop_simulation(self):
         """Dừng mô phỏng"""
         self.sim_timer.stop()
+        if hasattr(self, "stop_timer"):
+            self.stop_timer.stop()
+        self.running = False
+        self.update_run_button()
         print("[INFO] Simulation stopped.")
 
     def restart_simulation(self):
-        """Reset mô phỏng"""
+        """Reset mô phỏng về trạng thái ban đầu"""
+        # Dừng tất cả các timer đang chạy
         self.sim_timer.stop()
+        if hasattr(self, "stop_timer"):
+            self.stop_timer.stop()
+
+        # Reset biến mô phỏng
         self.sim_index = 0
         self.running = False
-        self.output_window.clear_graph()  # nếu có hàm clear trong OutputGraphWindow
+
+        # Xóa đồ thị nếu có hàm clear
+        if hasattr(self.output_window, "clear_graph"):
+            self.output_window.clear_graph()
+
+        # Reset lại nút Run
         self.update_run_button()
+
+        # In log
         print("[INFO] Simulation restarted (reset).")
 
     def feed_sim_data(self):

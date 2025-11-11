@@ -244,6 +244,43 @@
      </size>
     </property>
    </widget>
+   <widget class="QLineEdit" name="Run_time_input">
+    <property name="geometry">
+     <rect>
+      <x>700</x>
+      <y>70</y>
+      <width>151</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QLineEdit {
+    background-color: #E0F7FA;   /* Light cyan */
+    color: #000000;              /* Text color */
+}</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="Run_input_time">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>70</y>
+      <width>91</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Arial</family>
+      <pointsize>10</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>RUN TIME (s)</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -251,7 +288,7 @@
      <x>0</x>
      <y>0</y>
      <width>1276</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
