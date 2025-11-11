@@ -6,6 +6,7 @@ from windows.input_window import InputWindow
 from windows.plant_model_windows import PlantModelWindow, PlantModelDefault
 from windows.output_graph_windows import OutputGraphWindow, generate_motor_data
 from windows.user_guide_window import UserGuideWindow
+from windows.model_config_window import ModelConfigWindow
 
 class MainApp(QtWidgets.QMainWindow, Ui_Main):
     def __init__(self):
@@ -77,8 +78,8 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.user_guide_window.show()
 
     def open_ann_controller_window(self):
-        # Placeholder for ANN controller window
-        pass
+        self.model_config_window = ModelConfigWindow()
+        self.model_config_window.show()
     
     def run_simulation(self):
         """Bắt đầu giả lập dữ liệu real-time cho OutputGraphWindow"""

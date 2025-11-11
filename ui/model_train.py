@@ -10,7 +10,7 @@
 import os
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-from training_plots import TrainingPlotWindow
+from train_plots import TrainingPlotWindow
 import numpy as np
 
 os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
