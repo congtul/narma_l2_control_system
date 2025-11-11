@@ -94,13 +94,15 @@ class TrainingPlotWindow(QtWidgets.QMainWindow):
 
 # ------------------- Main Window -------------------
 class ModelTrainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
         # Tạo cửa sổ plot riêng
-        self.plot_win = TrainingPlotWindow(self)
+        self.plot_win = TrainingPlotWindow(parent=self)
+        self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
 
         # --- Các biến nội bộ ---
         self.epoch_total = 100

@@ -34,6 +34,7 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         self.ui.pushButton_4.clicked.connect(self.open_network_weight)
         self.ui.pushButton_5.clicked.connect(self.close)
         self.ui.pushButton_6.clicked.connect(self.run_model_train)
+        self.ui.pushButton_7.clicked.connect(self.close)
         self.ui.pushButton_8.clicked.connect(self.set_default_parameters)
 
     # ---------------- Validators ----------------
@@ -105,8 +106,10 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             return
 
         # Giữ reference để cửa sổ không tự tắt
-        if self.train_win is None:
-            self.train_win = ModelTrainWindow()
+        if getattr(self, "train_win", None) is None:
+            self.train_win = ModelTrainWindow(parent=self)
+            self.destroyed.connect(self.train_win.close)
+            self.train_win.destroyed.connect(lambda: setattr(self, "train_win", None))
 
         # Bạn có thể thêm method set_parameters trong ModelTrainWindow để truyền params
         # self.train_win.set_parameters(self.collect_train_parameters())
