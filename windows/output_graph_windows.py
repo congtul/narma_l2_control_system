@@ -18,15 +18,15 @@ def generate_motor_data(time_end=15):
     G = ctl.tf(num, den)
 
     # PID controller
-    Kp, Ki, Kd = 60, 30, 0.05
+    Kp, Ki, Kd = 50, 70, 1
     C = ctl.tf([Kd, Kp, Ki], [1, 0])
     sys_cl = ctl.feedback(C * G, 1)
 
     t = np.linspace(0, time_end, 2000)
     r = np.piecewise(
         t,
-        [t < 3, (t >= 3) & (t < 7), (t >= 7) & (t < 10),
-         (t >= 10) & (t < 13), t >= 13],
+        [t < 2, (t >= 2) & (t < 5), (t >= 5) & (t < 7),
+         (t >= 7) & (t < 10), t >= 10],
         [0.4, 0.6, 0.1, -0.2, 0]
     )
 

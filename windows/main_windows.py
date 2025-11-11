@@ -51,7 +51,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.sim_index = 0
 
         # buffer dữ liệu giả lập
-        self.output_t, self.output_r, self.output_y, self.output_y_pred, self.output_u = generate_motor_data(time_end=15)
+        self.output_t, self.output_r, self.output_y, self.output_y_pred, self.output_u = generate_motor_data(time_end=12)
 
         # === tạo OutputGraphWindow ngay nhưng không show ===
         self.output_window = OutputGraphWindow()
@@ -62,9 +62,9 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.Restart_btn.clicked.connect(self.restart_simulation)
 
         # === Setup icon / style ===
-        self.icon_start = QtGui.QIcon("C:\\usr\\congtul\\practice\\narma_l2_control_system\\resources\\images\\start_button.jpg")
-        self.icon_stop = QtGui.QIcon("C:\\usr\\congtul\\practice\\narma_l2_control_system\\resources\\images\\stop_button.jpg")
-        self.Restart_btn.setIcon(QtGui.QIcon("C:\\usr\\congtul\\practice\\narma_l2_control_system\\resources\\images\\restart_button.png"))
+        self.icon_start = QtGui.QIcon(".\\resources\\images\\start_button.jpg")
+        self.icon_stop = QtGui.QIcon(".\\resources\\images\\stop_button.jpg")
+        self.Restart_btn.setIcon(QtGui.QIcon(".\\resources\\images\\restart_button.png"))
         self.Run_btn.setIconSize(QtCore.QSize(50, 50))
         self.Restart_btn.setIconSize(QtCore.QSize(50, 50))
 
@@ -121,7 +121,8 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         """Bắt đầu giả lập dữ liệu real-time cho OutputGraphWindow"""
         # Lấy thời gian chạy từ QLineEdit
         try:
-            run_time = float(self.Run_time_input.text())
+            # run_time = float(self.Run_time_input.text())
+            run_time = 600.0  # Giả lập chạy 600 giây
             if run_time <= 0:
                 raise ValueError
         except ValueError:
@@ -131,7 +132,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             return
         
         # Reset chỉ số mô phỏng
-        self.sim_index = 0
+        # self.sim_index = 0
 
         # Bắt đầu timer mô phỏng (mỗi 50 ms)
         self.sim_timer.start(50)

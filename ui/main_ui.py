@@ -101,14 +101,14 @@ class Ui_MainWindow(object):
         self.Run_btn.setIconSize(QtCore.QSize(50, 50))
         self.Run_btn.setObjectName("Run_btn")
         self.Run_time_input = QtWidgets.QLineEdit(self.centralwidget)
-        self.Run_time_input.setGeometry(QtCore.QRect(700, 70, 151, 20))
+        self.Run_time_input.setGeometry(QtCore.QRect(730, 70, 151, 20))
         self.Run_time_input.setStyleSheet("QLineEdit {\n"
 "    background-color: #E0F7FA;   /* Light cyan */\n"
 "    color: #000000;              /* Text color */\n"
 "}")
         self.Run_time_input.setObjectName("Run_time_input")
         self.Run_input_time = QtWidgets.QLabel(self.centralwidget)
-        self.Run_input_time.setGeometry(QtCore.QRect(610, 70, 91, 16))
+        self.Run_input_time.setGeometry(QtCore.QRect(610, 70, 111, 16))
         font = QtGui.QFont()
         font.setFamily("Arial")
         font.setPointSize(10)
@@ -118,7 +118,7 @@ class Ui_MainWindow(object):
         self.Run_input_time.setObjectName("Run_input_time")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1276, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1276, 26))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
