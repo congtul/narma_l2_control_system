@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.main_ui import Ui_MainWindow as Ui_Main
@@ -8,11 +8,22 @@ from windows.output_graph_windows import OutputGraphWindow, generate_motor_data
 from windows.user_guide_window import UserGuideWindow
 from windows.model_config_window import ModelConfigWindow
 
+
 class MainApp(QtWidgets.QMainWindow, Ui_Main):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle("Main Window")
+
+        # === Thêm nút Restart nếu chưa có trong UI ===
+        if not hasattr(self, "Restart_btn"):
+            self.Restart_btn = QtWidgets.QPushButton("Restart", self)
+            self.Restart_btn.setGeometry(self.Run_btn.geometry().x() + 120, self.Run_btn.geometry().y(),
+                                         100, self.Run_btn.geometry().height())
+            self.Restart_btn.setStyleSheet("background-color: orange; color: white; font-weight: bold; border-radius: 5px;")
+            self.Restart_btn.show()
+
+        # === Các nút cần filter double click ===
         for btn in [
             self.input_btn,
             self.ANN_controller_btn,
@@ -22,7 +33,10 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             self.User_guide_btn,
         ]:
             btn.installEventFilter(self)
-        
+
+        # === State control ===
+        self.running = False
+
         # === buffer dữ liệu cho output graph ===
         self.output_data_ready = False
         self.output_t = []
@@ -31,19 +45,32 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.output_y_pred = []
         self.output_u = []
 
-         # === tạo timer để giả lập dữ liệu realtime ===
+        # === tạo timer để giả lập dữ liệu realtime ===
         self.sim_timer = QtCore.QTimer()
         self.sim_timer.timeout.connect(self.feed_sim_data)
         self.sim_index = 0
 
         # buffer dữ liệu giả lập
-        # just for mockup, will be replaced when in release
         self.output_t, self.output_r, self.output_y, self.output_y_pred, self.output_u = generate_motor_data(time_end=15)
 
         # === tạo OutputGraphWindow ngay nhưng không show ===
         self.output_window = OutputGraphWindow()
         self.output_window.hide()
 
+        # === Connect signals ===
+        self.Run_btn.clicked.connect(self.toggle_run)
+        self.Restart_btn.clicked.connect(self.restart_simulation)
+
+        # === Setup icon / style ===
+        self.icon_start = QtGui.QIcon("C:\\usr\\congtul\\practice\\narma_l2_control_system\\resources\\images\\start_button.jpg")
+        self.icon_stop = QtGui.QIcon("C:\\usr\\congtul\\practice\\narma_l2_control_system\\resources\\images\\stop_button.jpg")
+        self.Restart_btn.setIcon(QtGui.QIcon("C:\\usr\\congtul\\practice\\narma_l2_control_system\\resources\\images\\restart_button.png"))
+        self.Run_btn.setIconSize(QtCore.QSize(50, 50))
+        self.Restart_btn.setIconSize(QtCore.QSize(50, 50))
+
+        self.update_run_button()
+
+    # ---------------- Event Filter ----------------
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.MouseButtonDblClick and event.button() == QtCore.Qt.LeftButton:
             if obj == self.input_btn:
@@ -54,13 +81,12 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
                 self.open_dc_motor_window()
             elif obj == self.Output_btn:
                 self.open_output_window()
-            elif obj == self.Run_btn:
-                self.run_simulation()
             elif obj == self.User_guide_btn:
                 self.open_user_guide_window()
             return True
         return super().eventFilter(obj, event)
 
+    # ---------------- Open Windows ----------------
     def open_input_window(self):
         self.input_window = InputWindow()
         self.input_window.show()
@@ -80,11 +106,37 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
     def open_ann_controller_window(self):
         self.model_config_window = ModelConfigWindow()
         self.model_config_window.show()
-    
-    def run_simulation(self):
+
+    # ---------------- Simulation Control ----------------
+    def toggle_run(self):
+        """Toggle giữa Start / Stop"""
+        self.running = not self.running
+        if self.running:
+            self.start_simulation()
+        else:
+            self.stop_simulation()
+        self.update_run_button()
+
+    def start_simulation(self):
         """Bắt đầu giả lập dữ liệu real-time cho OutputGraphWindow"""
-        self.sim_index = 0
+        # self.sim_index = 0
+        # self.output_window.show()
         self.sim_timer.start(50)  # mỗi 50 ms gửi 1 sample
+        print("[INFO] Simulation started.")
+
+    def stop_simulation(self):
+        """Dừng mô phỏng"""
+        self.sim_timer.stop()
+        print("[INFO] Simulation stopped.")
+
+    def restart_simulation(self):
+        """Reset mô phỏng"""
+        self.sim_timer.stop()
+        self.sim_index = 0
+        self.running = False
+        self.output_window.clear_graph()  # nếu có hàm clear trong OutputGraphWindow
+        self.update_run_button()
+        print("[INFO] Simulation restarted (reset).")
 
     def feed_sim_data(self):
         if self.sim_index < len(self.output_t):
@@ -96,13 +148,24 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
             # Gửi dữ liệu vào OutputGraphWindow
             self.output_window.append_data(t, r, y, y_pred, u)
-
             self.sim_index += 1
         else:
-            self.sim_timer.stop()
+            self.stop_simulation()
+            self.running = False
+            self.update_run_button()
 
+    def update_run_button(self):
+        """Cập nhật giao diện nút Run (Start/Stop)"""
+        if self.running:
+            # self.Run_btn.setText("Stop")
+            self.Run_btn.setIcon(self.icon_stop)
+        else:
+            # self.Run_btn.setText("Start")
+            self.Run_btn.setIcon(self.icon_start)
+
+
+# ---------------- Main ----------------
 if __name__ == "__main__":
-    import sys
     app = QtWidgets.QApplication(sys.argv)
     main_win = MainApp()
     main_win.show()

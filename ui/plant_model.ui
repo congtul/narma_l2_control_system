@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1072</width>
-    <height>889</height>
+    <width>1063</width>
+    <height>879</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,7 +16,7 @@
   <widget class="QPushButton" name="save_button">
    <property name="geometry">
     <rect>
-     <x>870</x>
+     <x>770</x>
      <y>850</y>
      <width>93</width>
      <height>28</height>
@@ -124,6 +124,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
        <property name="font">
         <font>
          <family>Times New Roman</family>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -138,6 +139,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
        <property name="font">
         <font>
          <family>Times New Roman</family>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -167,6 +169,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
        <property name="font">
         <font>
          <family>Times New Roman</family>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -181,6 +184,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
        <property name="font">
         <font>
          <family>Times New Roman</family>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -198,6 +202,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
        <property name="font">
         <font>
          <family>Times New Roman</family>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -213,6 +218,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
        <property name="font">
         <font>
          <family>Times New Roman</family>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -230,6 +236,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
        <property name="font">
         <font>
          <family>Times New Roman</family>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -243,6 +250,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
       <widget class="QLabel" name="label_15">
        <property name="font">
         <font>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -256,6 +264,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
       <widget class="QLabel" name="label_16">
        <property name="font">
         <font>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -269,6 +278,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
       <widget class="QLabel" name="label_17">
        <property name="font">
         <font>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -282,6 +292,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
       <widget class="QLabel" name="label_18">
        <property name="font">
         <font>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -295,6 +306,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
       <widget class="QLabel" name="label_19">
        <property name="font">
         <font>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -308,6 +320,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
       <widget class="QLabel" name="label_20">
        <property name="font">
         <font>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -321,6 +334,7 @@ The default is a DC motor, or you can check the box “custom mode” below to u
       <widget class="QLabel" name="label_21">
        <property name="font">
         <font>
+         <pointsize>9</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -498,13 +512,29 @@ den = [12, 3, 7]
     </property>
     <property name="font">
      <font>
+      <family>Times New Roman</family>
       <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
      </font>
     </property>
     <property name="text">
      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Transfer function based &lt;/p&gt;&lt;p align=&quot;center&quot;&gt;on the entered parameters&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
+  </widget>
+  <widget class="QPushButton" name="apply_button">
+   <property name="geometry">
+    <rect>
+     <x>870</x>
+     <y>850</y>
+     <width>93</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Apply</string>
+   </property>
   </widget>
  </widget>
  <resources>

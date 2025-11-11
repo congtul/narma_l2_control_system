@@ -38,7 +38,7 @@ class PlantModelWindow(QDialog):
         # default checkbox
         self.ui.default_box.stateChanged.connect(self.on_default_checked)
         self.ui.custom_box.stateChanged.connect(self.on_custom_checked)
-        self.ui.save_button.clicked.connect(self.handle_save)
+        self.ui.apply_button.clicked.connect(self.handle_apply)
         self.ui.close_button.clicked.connect(self.close)
 
 
@@ -96,7 +96,7 @@ class PlantModelWindow(QDialog):
         pixmap.loadFromData(buf.getvalue())
         return pixmap
 
-    def handle_save(self):
+    def handle_apply(self):
         try:
             if self.ui.custom_box.isChecked():
                 self.num_list = self.parse_coeff_list(self.ui.num_custom_coeff.text())

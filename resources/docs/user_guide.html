@@ -78,7 +78,7 @@ This parameter will be synchronized across all blocks in the system.
         The generator will produce output = 0.1 for t&lt;1, output = -0.2 for 1&lt;t&lt;2, etc.</li>
       </ul>
     </li>
-    <li><b>Manual Mode:</b>  
+    <li><b>Advance Mode:</b>  
     In this mode, you can fully define how the reference signal changes over time by editing a pre-defined function.  
     Please do not change the function name, input parameters, or output variable to maintain framework compatibility.
     <pre><code>def generator(t):
@@ -93,11 +93,45 @@ This parameter will be synchronized across all blocks in the system.
 </div>
 
 <div class="section">
-  <h2>2. Controller Block using NARMA-L2 Model</h2>
+  <h2>2. Plant Model (Controlled Object)</h2>
+  <ul>
+    <li>If you are working with a DC motor, please input the corresponding motor parameters.</li>
+    <li>If you want to test another control plant, check the <b>“Custom Mode”</b> box and input your own transfer function.</li>
+    <li>Both methods will generate the final transfer function used by the control system.  
+      Click <b>“Save”</b> to confirm and close the configuration.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>3. Controller Block using NARMA-L2 Model</h2>
   <p>
     This block allows you to design a controller based on the <b>NARMA-L2 model</b>, which is developed from <b>Artificial Neural Networks (NARMA-L2)</b>.
     If you are not familiar with this concept, please refer to:
     <a href="https://ww2.mathworks.cn/help/deeplearning/ug/design-narma-l2-neural-controller-in-simulink.html" target="_blank">MathWorks NARMA-L2 Controller Documentation</a>.
+  </p>
+
+  <h3>How NARMA-L2 Model Works</h3>
+  <p>The NARMA-L2 model has two main tasks: system identification and control signal computation based on the identified system:</p>
+  <ul>
+    <li><b>Stage 1: System Identification</b>
+      <ul>
+        <li>The model observes the response of the plant model based on the input signals.</li>
+        <li>The inputs and corresponding outputs from the plant model form a dataset.</li>
+        <li>This dataset is used to train the NARMA-L2 model so that it can predict the behavior of the plant model for any given input (dynamic system modeling).</li>
+      </ul>
+    </li>
+    <li><b>Stage 2: Control Computation</b>
+      <ul>
+        <li>Once the NARMA-L2 model has identified the plant model, it receives the desired system output (desired signal).</li>
+        <li>It then computes the necessary input to the plant model so that the plant can track the desired setpoint.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p>
+    Therefore, in order to train the model in this section, please make sure the plant model has been defined.  
+    If not, the <b>“Generate Dataset”</b> button will remain inactive until a plant model is set.  
+    This button works by sending a sequence of random inputs into the plant model and collecting the corresponding outputs to create a dataset for the NARMA-L2 model.
   </p>
 
   <ul>
@@ -121,16 +155,6 @@ This parameter will be synchronized across all blocks in the system.
 
     <li>After training is complete, an evaluation window will appear where you can review the model’s performance.  
         Once satisfied with the results, click <b>“OK”</b> to confirm and apply the trained weights to your model.</li>
-  </ul>
-</div>
-
-<div class="section">
-  <h2>3. Plant Model (Controlled Object)</h2>
-  <ul>
-    <li>If you are working with a DC motor, please input the corresponding motor parameters.</li>
-    <li>If you want to test another control plant, check the <b>“Custom Mode”</b> box and input your own transfer function.</li>
-    <li>Both methods will generate the final transfer function used by the control system.  
-      Click <b>“Save”</b> to confirm and close the configuration.</li>
   </ul>
 </div>
 

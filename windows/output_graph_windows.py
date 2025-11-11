@@ -130,6 +130,19 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
         self.curve_real = self.graph_pred.plot(pen='black', name="Actual")
         self.graph_pred.showGrid(x=True, y=True, alpha=0.3)
 
+    def clear_graph(self):
+        self.data_t.clear()
+        self.data_ref.clear()
+        self.data_y.clear()
+        self.data_pred.clear()
+        self.data_u.clear()
+        self.curve_ref.clear()
+        self.curve_out.clear()
+        self.curve_pred.clear()
+        self.curve_real.clear()
+        self.last_draw_len = 0
+        self.update_graph(restart=True)
+
     # ===== thêm hàm này =====
     def append_data(self, t, r, y, y_pred, u):
         """Nhận thêm 1 hoặc nhiều điểm dữ liệu"""
@@ -146,9 +159,9 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
             self.data_pred.append(y_pred)
             self.data_u.append(u)
 
-    def update_graph(self):
+    def update_graph(self, restart=False):
         n = len(self.data_t)
-        if n == 0 or n == self.last_draw_len:
+        if (n == 0 or n == self.last_draw_len) and not restart:
             return  # chưa có dữ liệu mới
 
         # cập nhật vẽ
