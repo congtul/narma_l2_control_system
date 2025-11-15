@@ -7,7 +7,7 @@ class AdvanceModeWindow(QtWidgets.QMainWindow, Ui_Advance):
     saved_file_path = None
 
     def __init__(self, parent_window=None):
-        super().__init__()
+        super().__init__(parent_window)
         self.setupUi(self)
         self.setWindowTitle("Advance Mode Window")
         self.parent_window = parent_window

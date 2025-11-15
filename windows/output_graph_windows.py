@@ -93,8 +93,8 @@ def compute_error_metrics(ref, y, y_pred):
 
 # ===================== 3. GUI hiển thị realtime =====================
 class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setupUi(self)
         self._init_graphs()
 

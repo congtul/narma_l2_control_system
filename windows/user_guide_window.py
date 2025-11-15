@@ -2,8 +2,8 @@ from PyQt5 import QtWidgets, QtCore
 import os
 
 class UserGuideWindow(QtWidgets.QMainWindow):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setWindowTitle("User Guide")
         self.resize(900, 600)
         self.browser = QtWidgets.QTextBrowser()

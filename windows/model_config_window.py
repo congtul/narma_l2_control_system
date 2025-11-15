@@ -7,8 +7,8 @@ from windows.model_train_window import ModelTrainWindow
 
 class ModelConfigWindow(QtWidgets.QMainWindow):
     """Window cấu hình model, tương đương với file config hiện tại + Utils"""
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 

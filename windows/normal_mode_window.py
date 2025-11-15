@@ -11,11 +11,10 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
     saved_manual_values = {"stime": "", "veloval": ""}
 
     def __init__(self, parent_window=None):
-        super().__init__()
+        super().__init__(parent_window)
         self.setupUi(self)
         self.setWindowTitle("Normal Mode Window")
         self.parent_window = parent_window
-        self.active_mode = None
         self.graph_win = None  # Thêm biến instance cho graph
 
         restored = self.restore_previous_state()
@@ -39,6 +38,9 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
         self.man_Stime_lineedit.textChanged.connect(self.update_apply_button_state)
         self.man_Veloval_lineedit.textChanged.connect(self.update_apply_button_state)
 
+        if not restored:
+            self.active_mode = None
+
     def restore_previous_state(self):
         if NormalModeWindow.saved_mode == "random":
             self.active_mode = "random"
@@ -47,6 +49,11 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
             self.RD_min_vel_line_edit.setText(str(NormalModeWindow.saved_random_values["min_vel"]))
             self.man_Stime_lineedit.setText(str(NormalModeWindow.saved_manual_values["stime"]))
             self.man_Veloval_lineedit.setText(str(NormalModeWindow.saved_manual_values["veloval"]))
+            self.RD_max_vel_line_edit.setEnabled(True)
+            self.RD_min_vel_line_edit.setEnabled(True)
+            self.man_Stime_lineedit.setEnabled(False)
+            self.man_Veloval_lineedit.setEnabled(False)
+
             return True
         elif NormalModeWindow.saved_mode == "manual":
             self.active_mode = "manual"
@@ -55,6 +62,11 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
             self.man_Veloval_lineedit.setText(str(NormalModeWindow.saved_manual_values["veloval"]))
             self.RD_max_vel_line_edit.setText(str(NormalModeWindow.saved_random_values["max_vel"]))
             self.RD_min_vel_line_edit.setText(str(NormalModeWindow.saved_random_values["min_vel"]))
+            self.man_Stime_lineedit.setEnabled(True)
+            self.man_Veloval_lineedit.setEnabled(True)
+            self.RD_max_vel_line_edit.setEnabled(False)
+            self.RD_min_vel_line_edit.setEnabled(False)
+
             return True
         else:
             self.active_mode = None
@@ -83,6 +95,9 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
 
     def reset_all_values(self):
         self.active_mode = None
+        NormalModeWindow.saved_mode = None
+        NormalModeWindow.saved_random_values = {"max_vel": "", "min_vel": ""}
+        NormalModeWindow.saved_manual_values = {"stime": "", "veloval": ""}
         self.RD_max_vel_line_edit.clear()
         self.RD_min_vel_line_edit.clear()
         self.man_Stime_lineedit.clear()
@@ -92,10 +107,24 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
         self.man_Stime_lineedit.setEnabled(False)
         self.man_Veloval_lineedit.setEnabled(False)
         self.Apply_normalmode_btn.setEnabled(False)
+        self.update_apply_button_state()
         self.Status_nor_label.setText("Reset all values")
         self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+        print(f"[Reset] saved_random_values = {NormalModeWindow.saved_random_values}, saved_manual_values = {NormalModeWindow.saved_manual_values}")
 
     def update_apply_button_state(self):
+         # RESET CASE
+        if self.active_mode is None:
+            if (not self.RD_max_vel_line_edit.text().strip() and
+                not self.RD_min_vel_line_edit.text().strip() and
+                not self.man_Stime_lineedit.text().strip() and
+                not self.man_Veloval_lineedit.text().strip()):
+                
+                self.Apply_normalmode_btn.setEnabled(True)
+            else:
+                self.Apply_normalmode_btn.setEnabled(False)
+            return
+           
         if self.active_mode == "random":
             self.Apply_normalmode_btn.setEnabled(
                 bool(self.RD_max_vel_line_edit.text().strip() and
@@ -118,6 +147,10 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
         return [float(x) for x in items]
 
     def apply_normal_mode(self):
+           # Validate first
+        if not self.validate_inputs():
+            self.Apply_normalmode_btn.setEnabled(False)
+            return
         t_max = 10  # Thời gian tối đa để hiển thị graph, có thể tối ưu sau
         t = np.linspace(0, t_max, 1000)
 
@@ -167,10 +200,83 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
 
             self.plot_graph(t, y, title="Manual Generator Preview")
 
-        self.Apply_normalmode_btn.setEnabled(False)
-        if self.active_mode:
+        else:
+            # Clear saved values
+            max_vel = self.RD_max_vel_line_edit.text()  
+            min_vel = self.RD_min_vel_line_edit.text()
+            step_time = self.parse_manual_input(self.man_Stime_lineedit.text())   
+            step_value = self.parse_manual_input(self.man_Veloval_lineedit.text())
+
+            
+
+        if self.active_mode is not None:
             self.Status_nor_label.setText(f"{self.active_mode.capitalize()} values applied successfully!")
             self.Status_nor_label.setStyleSheet("color: green; font-weight: bold;")
+        else:
+            self.Status_nor_label.setText("Reset all values")
+
+        self.Apply_normalmode_btn.setEnabled(False)
+
+    def validate_inputs(self):
+    # RANDOM MODE VALIDATION
+        if self.active_mode == "random":
+            try:
+                max_vel = float(self.RD_max_vel_line_edit.text())
+                min_vel = float(self.RD_min_vel_line_edit.text())
+            except:
+                self.Status_nor_label.setText("Random mode: values must be numbers!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            if max_vel > 12:
+                self.Status_nor_label.setText("Max velocity cannot exceed 12!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            if min_vel < -12:
+                self.Status_nor_label.setText("Min velocity cannot be less than -12!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            if min_vel > max_vel:
+                self.Status_nor_label.setText("Min velocity must be ≤ Max velocity!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            return True
+
+        # MANUAL MODE VALIDATION
+        elif self.active_mode == "manual":
+            try:
+                st = self.parse_manual_input(self.man_Stime_lineedit.text())
+                sv = self.parse_manual_input(self.man_Veloval_lineedit.text())
+            except:
+                self.Status_nor_label.setText("Manual mode: invalid numbers!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            # Times must be >= 0
+            if any(t < 0 for t in st):
+                self.Status_nor_label.setText("Step times must be >= 0!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            # Times must be strictly increasing
+            if any(st[i] >= st[i+1] for i in range(len(st)-1)):
+                self.Status_nor_label.setText("Step times must increase left → right!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            # Value must be within -30 to 30
+            if any(v < -30 or v > 30 for v in sv):
+                self.Status_nor_label.setText("Step values must be between -30 and 30!")
+                self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+                return False
+
+            return True
+
+        else:
+            return False
 
     def plot_graph(self, t, y, title="Preview"):
         if not self.graph_win or not self.graph_win.isVisible():
@@ -202,6 +308,10 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
         self.close()
 
     def closeEvent(self, event):
+        if self.graph_win and self.graph_win.isVisible():
+            self.graph_win.close()
+            self.graph_win = None
+
         if self.parent_window:
             self.parent_window.show()
         event.accept()

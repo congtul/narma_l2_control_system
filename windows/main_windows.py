@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QWidget
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.main_ui import Ui_MainWindow as Ui_Main
@@ -88,7 +89,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
     # ---------------- Open Windows ----------------
     def open_input_window(self):
-        self.input_window = InputWindow()
+        self.input_window = InputWindow(parent=self)
         self.input_window.show()
 
     def open_dc_motor_window(self):
@@ -100,12 +101,20 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.output_window.show()
 
     def open_user_guide_window(self):
-        self.user_guide_window = UserGuideWindow()
+        self.user_guide_window = UserGuideWindow(parent=self)
         self.user_guide_window.show()
 
     def open_ann_controller_window(self):
-        self.model_config_window = ModelConfigWindow()
+        self.model_config_window = ModelConfigWindow(parent=self)
         self.model_config_window.show()
+
+    def closeEvent(self, event):
+        for w in self.findChildren(QWidget):
+            try:
+                w.close()
+            except:
+                pass
+        event.accept()
 
     # ---------------- Simulation Control ----------------
     def toggle_run(self):

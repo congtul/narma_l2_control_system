@@ -6,8 +6,8 @@ from windows.normal_mode_window import NormalModeWindow
 from windows.advance_mode_window import AdvanceModeWindow
 
 class InputWindow(QtWidgets.QMainWindow, Ui_Input):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setupUi(self)
         self.setWindowTitle("Input Window")
 
