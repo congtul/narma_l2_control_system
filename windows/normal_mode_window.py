@@ -179,6 +179,12 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
 
             self.plot_graph(t, y, title="Random Generator Preview")
 
+            self.Status_nor_label.setText("Random values applied successfully!")
+            self.Status_nor_label.setStyleSheet("color: green; font-weight: bold;")
+            self.Apply_normalmode_btn.setEnabled(False)
+            print(f"Quang Debug random values")
+            return ("random", max_vel, min_vel, None, None)
+    
         elif self.active_mode == "manual":
             NormalModeWindow.saved_mode = "manual"
             step_time = self.parse_manual_input(self.man_Stime_lineedit.text())
@@ -199,26 +205,30 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
                 y[t >= step_time[-1]] = step_value[-1]
 
             self.plot_graph(t, y, title="Manual Generator Preview")
-
-        else:
-            # Clear saved values
-            max_vel = self.RD_max_vel_line_edit.text()  
-            min_vel = self.RD_min_vel_line_edit.text()
-            step_time = self.parse_manual_input(self.man_Stime_lineedit.text())   
-            step_value = self.parse_manual_input(self.man_Veloval_lineedit.text())
-
-            
-
-        if self.active_mode is not None:
-            self.Status_nor_label.setText(f"{self.active_mode.capitalize()} values applied successfully!")
+            self.Status_nor_label.setText("Manual values applied successfully!")
             self.Status_nor_label.setStyleSheet("color: green; font-weight: bold;")
-        else:
-            self.Status_nor_label.setText("Reset all values")
+            self.Apply_normalmode_btn.setEnabled(False)
+            print(f"Quang Debug manual values")
 
-        self.Apply_normalmode_btn.setEnabled(False)
+            return ("manual", None, None, step_time, step_value)
+        
+        else:
+            print(f"Quang Debug reset values")
+            self.Status_nor_label.setText("Reset all values")
+            self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
+            self.Apply_normalmode_btn.setEnabled(False)
+            return (None, None, None, None, None)             
 
     def validate_inputs(self):
-    # RANDOM MODE VALIDATION
+        if self.active_mode is None:
+            if (not self.RD_max_vel_line_edit.text().strip() and
+                not self.RD_min_vel_line_edit.text().strip() and
+                not self.man_Stime_lineedit.text().strip() and
+                not self.man_Veloval_lineedit.text().strip()):
+                
+                # Reset mode is VALID
+                return True
+            
         if self.active_mode == "random":
             try:
                 max_vel = float(self.RD_max_vel_line_edit.text())
