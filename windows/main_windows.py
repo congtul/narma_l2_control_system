@@ -90,6 +90,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
     # ---------------- Open Windows ----------------
     def open_input_window(self):
         self.input_window = InputWindow(parent=self)
+        self.input_window.main_window_ref = self
         self.input_window.show()
 
     def open_dc_motor_window(self):

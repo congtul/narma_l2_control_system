@@ -260,7 +260,7 @@
 }</string>
     </property>
    </widget>
-   <widget class="QLabel" name="Run_input_time">
+   <widget class="QLabel" name="Run_time_label">
     <property name="geometry">
      <rect>
       <x>610</x>
@@ -288,7 +288,7 @@
      <x>0</x>
      <y>0</y>
      <width>1276</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

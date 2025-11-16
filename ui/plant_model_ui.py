@@ -318,4 +318,3 @@ class Ui_plant_model(object):
         self.transfer_function_res.setText(_translate("plant_model", "<html><head/><body><p><img src=\":/model_config/images/tf_mockup.png\"/></p></body></html>"))
         self.label_25.setText(_translate("plant_model", "<html><head/><body><p align=\"center\">Transfer function based </p><p align=\"center\">on the entered parameters</p></body></html>"))
         self.apply_button.setText(_translate("plant_model", "Apply"))
-from ui import plant_model_rc

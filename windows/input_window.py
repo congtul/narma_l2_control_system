@@ -10,6 +10,7 @@ class InputWindow(QtWidgets.QMainWindow, Ui_Input):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowTitle("Input Window")
+        self.main_window_ref = None 
 
         # connect button clicks (single click)
         self.Normal_mode_btn.clicked.connect(self.open_normal_mode)
@@ -22,6 +23,7 @@ class InputWindow(QtWidgets.QMainWindow, Ui_Input):
 
     def open_advance_mode(self):
         self.advance_window = AdvanceModeWindow(self)
+        self.advance_window.main_window_ref = self.main_window_ref
         self.advance_window.show()
         self.hide()
 
