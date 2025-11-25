@@ -8,6 +8,7 @@ from PyQt5.QtGui import QPixmap
 import matplotlib.pyplot as plt
 from ui.plant_model_ui import Ui_plant_model
 from PyQt5.QtWidgets import QMessageBox
+from backend.system_workspace import workspace
 
 class PlantModelDefault:
     """Chứa giá trị mặc định và các tính toán plant"""
@@ -115,6 +116,11 @@ class PlantModelWindow(QDialog):
 
             pixmap = self.tf_to_png()
             self.ui.transfer_function_res.setPixmap(pixmap)
+
+            # ===================== Update backend workspace =====================
+            workspace.plant["num"] = self.num_list
+            workspace.plant["den"] = self.den_list
+            print(f"[INFO] Workspace plant updated: num={self.num_list}, den={self.den_list}")
         except ValueError:
             QMessageBox.warning(self, "Input Error", "Please enter valid numeric values.")
 
