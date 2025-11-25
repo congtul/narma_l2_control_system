@@ -17,6 +17,10 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle("Main Window")
+        self.setFixedSize(self.size())
+
+        self._bg_pix = QtGui.QPixmap(".\\resources\\images\\2.jpg")
+        self._update_background()
 
         # === Thêm nút Restart nếu chưa có trong UI ===
         if not hasattr(self, "Restart_btn"):
@@ -188,6 +192,20 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         else:
             # self.Run_btn.setText("Start")
             self.Run_btn.setIcon(self.icon_start)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_background()
+
+    def _update_background(self):
+        if hasattr(self, "_bg_pix") and not self._bg_pix.isNull():
+            scaled = self._bg_pix.scaled(
+                self.main_label.size(),
+                QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation
+            )
+            self.main_label.setScaledContents(False)
+            self.main_label.setPixmap(scaled)
 
 
 # ---------------- Main ----------------
