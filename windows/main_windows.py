@@ -10,6 +10,7 @@ from windows.output_graph_windows import OutputGraphWindow
 from windows.user_guide_window import UserGuideWindow
 from windows.model_config_window import ModelConfigWindow
 from backend.simulation_worker import SimulationWorker
+from windows.login_window import LoginDialog
 
 
 class MainApp(QtWidgets.QMainWindow, Ui_Main):
@@ -21,6 +22,14 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
         self._bg_pix = QtGui.QPixmap(".\\resources\\images\\2.jpg")
         self._update_background()
+
+        # Login / Logout state
+        self.current_user = None  # {"username": str, "role": "admin|user"}
+        self.login_btn = QtWidgets.QPushButton("Login", self)
+        self.login_btn.setGeometry(20, 50, 120, 30)  # under "Main UI"
+        self.login_btn.setStyleSheet("background-color: #ffffff; border: 1px solid #999; border-radius: 6px;")
+        self.login_btn.clicked.connect(self.handle_login_logout)
+        self._user_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "resources", "users.json"))
 
         # === Thêm nút Restart nếu chưa có trong UI ===
         if not hasattr(self, "Restart_btn"):
@@ -68,6 +77,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.Restart_btn.setIconSize(QtCore.QSize(50, 50))
 
         self.update_run_button()
+        self.update_login_button()
 
     # ---------------- Event Filter ----------------
     def eventFilter(self, obj, event):
@@ -87,23 +97,33 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
     # ---------------- Open Windows ----------------
     def open_input_window(self):
+        if not self._ensure_access():
+            return
         self.input_window = InputWindow(parent=self)
         self.input_window.main_window_ref = self
         self.input_window.show()
 
     def open_dc_motor_window(self):
+        if not self._ensure_access():
+            return
         default_model = PlantModelDefault()
         self.dc_motor_window = PlantModelWindow(parent=self, default_model=default_model)
         self.dc_motor_window.show()
 
     def open_output_window(self):
+        if not self._ensure_access():
+            return
         self.output_window.show()
 
     def open_user_guide_window(self):
+        if not self._ensure_access():
+            return
         self.user_guide_window = UserGuideWindow(parent=self)
         self.user_guide_window.show()
 
     def open_ann_controller_window(self):
+        if not self._ensure_access(require_admin=True):
+            return
         self.model_config_window = ModelConfigWindow(parent=self)
         self.model_config_window.show()
 
@@ -192,6 +212,34 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         else:
             # self.Run_btn.setText("Start")
             self.Run_btn.setIcon(self.icon_start)
+
+    # ---------------- Login / Logout ----------------
+    def handle_login_logout(self):
+        if self.current_user:
+            self.current_user = None
+            QtWidgets.QMessageBox.information(self, "Logged out", "You have been logged out.")
+        else:
+            dlg = LoginDialog(self, db_path=self._user_db_path)
+            if dlg.exec_() == QtWidgets.QDialog.Accepted:
+                username, role = dlg.get_result()
+                self.current_user = {"username": username, "role": role}
+                QtWidgets.QMessageBox.information(self, "Logged in", f"Welcome {username} ({role}).")
+        self.update_login_button()
+
+    def update_login_button(self):
+        if self.current_user:
+            self.login_btn.setText(f"Logout ({self.current_user['role']})")
+        else:
+            self.login_btn.setText("Login")
+
+    def _ensure_access(self, require_admin=False):
+        if not self.current_user:
+            QtWidgets.QMessageBox.warning(self, "Login required", "Please login to access this feature.")
+            return False
+        if require_admin and self.current_user.get("role") != "admin":
+            QtWidgets.QMessageBox.critical(self, "Access denied", "Only admin users can access this feature.")
+            return False
+        return True
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
