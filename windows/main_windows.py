@@ -1,13 +1,15 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import QWidget
+from PyQt5.QtCore import QThread
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.main_ui import Ui_MainWindow as Ui_Main
 from windows.input_window import InputWindow
 from windows.plant_model_windows import PlantModelWindow, PlantModelDefault
-from windows.output_graph_windows import OutputGraphWindow, generate_motor_data
+from windows.output_graph_windows import OutputGraphWindow
 from windows.user_guide_window import UserGuideWindow
 from windows.model_config_window import ModelConfigWindow
+from backend.simulation_worker import SimulationWorker
 
 
 class MainApp(QtWidgets.QMainWindow, Ui_Main):
@@ -45,14 +47,6 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.output_y = []
         self.output_y_pred = []
         self.output_u = []
-
-        # === tạo timer để giả lập dữ liệu realtime ===
-        self.sim_timer = QtCore.QTimer()
-        self.sim_timer.timeout.connect(self.feed_sim_data)
-        self.sim_index = 0
-
-        # buffer dữ liệu giả lập
-        self.output_t, self.output_r, self.output_y, self.output_y_pred, self.output_u = generate_motor_data(time_end=12)
 
         # === tạo OutputGraphWindow ngay nhưng không show ===
         self.output_window = OutputGraphWindow()
@@ -131,35 +125,38 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         """Bắt đầu giả lập dữ liệu real-time cho OutputGraphWindow"""
         # Lấy thời gian chạy từ QLineEdit
         try:
-            # run_time = float(self.Run_time_input.text())
-            run_time = 600.0  # Giả lập chạy 600 giây
-            if run_time <= 0:
-                raise ValueError
+            run_time = 600.0
+            if run_time <= 0: raise ValueError
         except ValueError:
-            QtWidgets.QMessageBox.warning(self, "Invalid Input", "Please enter a valid positive run time (seconds).")
+            QtWidgets.QMessageBox.warning(self, "Invalid Input", "Please enter a valid positive run time.")
             self.running = False
             self.update_run_button()
             return
-        
-        # Reset chỉ số mô phỏng
-        # self.sim_index = 0
 
-        # Bắt đầu timer mô phỏng (mỗi 50 ms)
-        self.sim_timer.start(50)
+        # === Tạo thread + worker ===
+        self.sim_thread = QThread()
+        self.sim_worker = SimulationWorker(dt=0.05)
+        self.sim_worker.moveToThread(self.sim_thread)
 
-        # === Thêm timer dừng mô phỏng sau run_time giây ===
+        # Signal-slot
+        self.sim_thread.started.connect(self.sim_worker.run)
+        self.sim_worker.data_ready.connect(self.output_window.append_data)
+        self.sim_worker.finished.connect(self.sim_thread.quit)
+
+        self.sim_thread.start()
+
+        # === Timer dừng theo run_time ===
         self.stop_timer = QtCore.QTimer(self)
         self.stop_timer.setSingleShot(True)
         self.stop_timer.timeout.connect(self.stop_simulation)
-        self.stop_timer.start(int(run_time * 1000))  # đổi giây -> mili giây
+        self.stop_timer.start(int(run_time * 1000))
 
         print(f"[INFO] Simulation started for {run_time} seconds.")
     
     def stop_simulation(self):
         """Dừng mô phỏng"""
-        self.sim_timer.stop()
-        if hasattr(self, "stop_timer"):
-            self.stop_timer.stop()
+        if hasattr(self, "sim_worker"):
+            self.sim_worker.stop()  
         self.running = False
         self.update_run_button()
         print("[INFO] Simulation stopped.")
@@ -167,39 +164,21 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
     def restart_simulation(self):
         """Reset mô phỏng về trạng thái ban đầu"""
         # Dừng tất cả các timer đang chạy
-        self.sim_timer.stop()
-        if hasattr(self, "stop_timer"):
-            self.stop_timer.stop()
+        self.stop_simulation()
 
-        # Reset biến mô phỏng
-        self.sim_index = 0
-        self.running = False
+        if hasattr(self, "sim_worker"):
+            self.sim_worker.reset()  # reset clock
 
         # Xóa đồ thị nếu có hàm clear
         if hasattr(self.output_window, "clear_graph"):
             self.output_window.clear_graph()
 
+        self.running = False
         # Reset lại nút Run
         self.update_run_button()
 
         # In log
         print("[INFO] Simulation restarted (reset).")
-
-    def feed_sim_data(self):
-        if self.sim_index < len(self.output_t):
-            t = self.output_t[self.sim_index]
-            r = self.output_r[self.sim_index]
-            y = self.output_y[self.sim_index]
-            y_pred = self.output_y_pred[self.sim_index]
-            u = self.output_u[self.sim_index]
-
-            # Gửi dữ liệu vào OutputGraphWindow
-            self.output_window.append_data(t, r, y, y_pred, u)
-            self.sim_index += 1
-        else:
-            self.stop_simulation()
-            self.running = False
-            self.update_run_button()
 
     def update_run_button(self):
         """Cập nhật giao diện nút Run (Start/Stop)"""

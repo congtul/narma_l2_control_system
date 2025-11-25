@@ -12,14 +12,15 @@ class SystemWorkspace:
     """Singleton workspace cho toàn bộ app."""
 
     def __init__(self):
+        self.dt = 0.01  # thời gian mẫu chung
+        self.run_time = 10  # thời gian chạy mô phỏng
         # ---------------- Plant model ----------------
         # Transfer function user nhập
         self.plant = {
-            "num_cont": [],           # list or ndarray
-            "den_cont": [],           # list or ndarray
+            "num_cont": [0.01],           # list or ndarray
+            "den_cont": [0.005, 0.07, 0.2],           # list or ndarray
             "num_disc": [],           # discrete-time numerator
             "den_disc": [],           # discrete-time denominator
-            "dt": 0.01,               # sampling time
         }
 
         # ---------------- NARMA-L2 model ----------------
