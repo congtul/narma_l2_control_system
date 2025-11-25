@@ -109,10 +109,10 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
         self.epoch_count = 0
 
         # --- Gắn signal ---
-        self.ui.pushButton_2.clicked.connect(self._demo_update)
-        self.ui.pushButton_2.clicked.connect(self.plot_win.show)
-        self.ui.pushButton_3.clicked.connect(self._stop_training)
-        self.ui.pushButton_4.clicked.connect(self.close)
+        self.ui.performance_btn.clicked.connect(self._demo_update)
+        self.ui.performance_btn.clicked.connect(self.plot_win.show)
+        self.ui.stop_btn.clicked.connect(self._stop_training)
+        self.ui.cancel_btn.clicked.connect(self.close)
 
         # --- Timer mô phỏng ---
         self.demo_timer = QtCore.QTimer()
@@ -123,8 +123,8 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
     # --- Các hàm phụ ---
     def _set_epoch_count(self, current: int, total: int = None):
         if total is not None:
-            self.ui.progressBar.setRange(0, int(total))
-        self.ui.progressBar.setValue(int(current))
+            self.ui.progress_bar.setRange(0, int(total))
+        self.ui.progress_bar.setValue(int(current))
 
     def _tick(self):
         if self.epoch_count < self.epoch_total:
