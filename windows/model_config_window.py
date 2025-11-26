@@ -151,6 +151,15 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         ui.use_test_checkbox.setChecked(True)
         self.update_buttons_state()
 
+    def closeEvent(self, event):
+        """Ensure child training windows are closed when config window closes."""
+        if getattr(self, "train_win", None) is not None:
+            try:
+                self.train_win.close()
+            except Exception:
+                pass
+        super().closeEvent(event)
+
 
 # ---------------- Main ----------------
 if __name__ == "__main__":
