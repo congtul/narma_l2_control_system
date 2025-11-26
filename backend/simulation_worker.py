@@ -1,8 +1,11 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 import numpy as np
 import time
 from backend.system_workspace import workspace
 from backend import utils
+
 
 class SimulationWorker(QObject):
     data_ready = pyqtSignal(float, float, float, float, float)
