@@ -2,11 +2,14 @@
 import sys, os
 from PyQt5 import QtCore, QtGui, QtWidgets
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ui.model_config_ui import Ui_MainWindow  # UI đã convert từ Qt Designer
+from ui.model_config_ui import Ui_MainWindow  # UI generated from Qt Designer
 from windows.model_train_window import ModelTrainWindow
+from backend.system_workspace import workspace
+
 
 class ModelConfigWindow(QtWidgets.QMainWindow):
-    """Window cấu hình model, tương đương với file config hiện tại + Utils"""
+    """Model configuration window plus utilities."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.ui = Ui_MainWindow()
@@ -23,19 +26,11 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
 
         self._setup_validators()
         self._connect_signals()
+        self.restore_saved_parameters()
         self.update_buttons_state()
 
         # Placeholder for child window
         self.train_win = None
-
-        # Gắn signal trực tiếp
-        self.ui.import_weight_btn.clicked.connect(self.open_network_weight)
-        self.ui.generate_data_btn.clicked.connect(self.run_generate_data)
-        self.ui.import_data_btn.clicked.connect(self.open_network_weight)
-        self.ui.cancel_btn.clicked.connect(self.close)
-        self.ui.train_btn.clicked.connect(self.run_model_train)
-        self.ui.ok_btn.clicked.connect(self.close)
-        self.ui.default_btn.clicked.connect(self.set_default_parameters)
 
     # ---------------- Validators ----------------
     def _setup_validators(self):
@@ -53,6 +48,15 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
     def _connect_signals(self):
         for w in self.required_edits_all:
             w.textChanged.connect(self.update_buttons_state)
+
+        self.ui.import_weight_btn.clicked.connect(self.open_network_weight)
+        self.ui.generate_data_btn.clicked.connect(self.run_generate_data)
+        self.ui.import_data_btn.clicked.connect(self.open_network_weight)
+        self.ui.cancel_btn.clicked.connect(self.close)
+        self.ui.train_btn.clicked.connect(self.run_model_train)
+        self.ui.ok_btn.clicked.connect(self.close)
+        self.ui.default_btn.clicked.connect(self.set_default_parameters)
+        self.ui.save_btn.clicked.connect(self.handle_save)
 
     @staticmethod
     def _is_valid(widget):
@@ -89,7 +93,7 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             "max_int_l": float(ui.max_interval_left_input.text()),
             "min_in_r": float(ui.max_plant_output.text()),
             "max_in_r": float(ui.min_plant_output.text()),
-            "max_int_r": float(ui.max_interval_right_input.text()),
+            "min_int_r": float(ui.max_interval_right_input.text()),
             "use_val": ui.use_validation_checkbox.isChecked(),
             "use_test": ui.use_test_checkbox.isChecked(),
         }
@@ -105,14 +109,10 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Invalid input", "Please fill all fields correctly.")
             return
 
-        # Giữ reference để cửa sổ không tự tắt
         if getattr(self, "train_win", None) is None:
             self.train_win = ModelTrainWindow(parent=self)
             self.destroyed.connect(self.train_win.close)
             self.train_win.destroyed.connect(lambda: setattr(self, "train_win", None))
-
-        # Bạn có thể thêm method set_parameters trong ModelTrainWindow để truyền params
-        # self.train_win.set_parameters(self.collect_train_parameters())
 
         self.train_win.show()
 
@@ -129,10 +129,74 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
 
     def open_network_weight(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select Weight File", "", "All Files (*);;HDF5 Files (*.h5);;Text Files (*.txt)"
+            self,
+            "Select Config File",
+            "",
+            "JSON Files (*.json)"
         )
-        if path:
-            print(f"Selected file: {path}")
+        if not path:
+            return
+        try:
+            import json
+            with open(path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Load Error", f"Could not read JSON file:\n{e}")
+            return
+
+        ok, msg = self._validate_config_dict(cfg)
+        if not ok:
+            QtWidgets.QMessageBox.warning(self, "Invalid Config", msg)
+            return
+
+        self._apply_config_dict(cfg)
+        
+        QtWidgets.QMessageBox.information(self, "Loaded", "Configuration loaded.")
+        self.update_buttons_state()
+
+    def _validate_config_dict(self, cfg):
+        required_nums = [
+            "hidden", "delay_in", "delay_out", "train_samples",
+            "max_in_l", "min_in_l", "max_int_l",
+            "min_in_r", "max_in_r", "min_int_r", "epochs"
+        ]
+        for key in required_nums:
+            if key not in cfg:
+                return False, f"Missing numeric field: {key}"
+            if not isinstance(cfg[key], (int, float)):
+                return False, f"Field '{key}' must be a number."
+        for key in ["use_val", "use_test"]:
+            if key in cfg and not isinstance(cfg[key], bool):
+                return False, f"Field '{key}' must be true/false."
+        return True, ""
+
+    def _apply_config_dict(self, cfg):
+        mapping = {
+            "hidden": self.ui.hidden_layers_input,
+            "delay_in": self.ui.delayed_inputs_input,
+            "delay_out": self.ui.delayed_outputs_input,
+            "train_samples": self.ui.training_samples_input,
+            "max_in_l": self.ui.max_plant_input,
+            "min_in_l": self.ui.min_plant_input,
+            "max_int_l": self.ui.max_interval_left_input,
+            "min_in_r": self.ui.max_plant_output,
+            "max_in_r": self.ui.min_plant_output,
+            "min_int_r": self.ui.max_interval_right_input,
+            "epochs": self.ui.training_epochs_input,
+        }
+        for key, widget in mapping.items():
+            if key in cfg:
+                widget.setText(str(cfg[key]))
+        if "use_val" in cfg:
+            self.ui.use_validation_checkbox.setChecked(bool(cfg.get("use_val")))
+        if "use_test" in cfg:
+            self.ui.use_test_checkbox.setChecked(bool(cfg.get("use_test")))
+
+    def handle_save(self):
+        if not self.all_valid():
+            QtWidgets.QMessageBox.warning(self, "Invalid input")
+            return
+        workspace.narma_config = self.collect_train_parameters()
 
     def set_default_parameters(self):
         ui = self.ui
@@ -151,13 +215,34 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         ui.use_test_checkbox.setChecked(True)
         self.update_buttons_state()
 
+    def restore_saved_parameters(self):
+        """Populate fields from saved workspace configuration if available."""
+        cfg = getattr(workspace, "narma_config", {}) or {}
+        mapping = {
+            "hidden": self.ui.hidden_layers_input,
+            "delay_in": self.ui.delayed_inputs_input,
+            "delay_out": self.ui.delayed_outputs_input,
+            "train_samples": self.ui.training_samples_input,
+            "max_in_l": self.ui.max_plant_input,
+            "min_in_l": self.ui.min_plant_input,
+            "max_int_l": self.ui.max_interval_left_input,
+            "min_in_r": self.ui.max_plant_output,
+            "max_in_r": self.ui.min_plant_output,
+            "min_int_r": self.ui.max_interval_right_input,
+            "epochs": self.ui.training_epochs_input,
+        }
+        for key, widget in mapping.items():
+            if key in cfg:
+                widget.setText(str(cfg[key]))
+        if "use_val" in cfg:
+            self.ui.use_validation_checkbox.setChecked(bool(cfg.get("use_val")))
+        if "use_test" in cfg:
+            self.ui.use_test_checkbox.setChecked(bool(cfg.get("use_test")))
+
     def closeEvent(self, event):
-        """Ensure child training windows are closed when config window closes."""
-        if getattr(self, "train_win", None) is not None:
-            try:
-                self.train_win.close()
-            except Exception:
-                pass
+        if self.train_win is not None and self.train_win.isVisible():
+            self.train_win.close()
+            self.train_win = None
         super().closeEvent(event)
 
 
