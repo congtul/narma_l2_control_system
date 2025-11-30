@@ -6,34 +6,22 @@ và các buffer dữ liệu để UI và các thread khác truy cập.
 """
 
 from collections import deque
-from copy import deepcopy
+from backend.narma_l2_model import NARMA_L2_Controller
 
 class SystemWorkspace:
     """Singleton workspace cho toàn bộ app."""
 
     def __init__(self):
-        self.dt = 0.01  # thời gian mẫu chung
-        self.run_time = 10  # thời gian chạy mô phỏng
+        self.dt = self.get_default_sampling_time()  # sampling time
+        self.runtime = self.get_default_runtime()  # total simulation time
         # ---------------- Plant model ----------------
-        # Transfer function user nhập
         self.plant = {
-            "num_cont": [0.01],           # list or ndarray
-            "den_cont": [0.005, 0.07, 0.2],           # list or ndarray
-            "num_disc": [],           # discrete-time numerator
-            "den_disc": [],           # discrete-time denominator
+            "mode": "dc_motor",  # "dc_motor" or "custom"
         }
+        self.set_default_dc_motor_plant()
 
         # ---------------- NARMA-L2 model ----------------
-        self.narma_config = {}    # config dict (order, hidden units...)
-        self.narma_model = None   # object neural net
-        # imported NARMA weights
-        self.narma_weights = {
-            "ny": None,
-            "nu": None,
-            "hidden": None,
-            "f": {},
-            "g": {},
-        }
+        self.set_default_narma_l2_model()
 
         # ---------------- Reference signal ----------------
         self.reference = {
@@ -99,6 +87,67 @@ class SystemWorkspace:
         self.logs.clear()
         print("[INFO] Workspace fully reset.")
 
+    #--------------------Default DC motor params--------------------#
+    def get_default_dc_motor_params(self):
+        return {
+            'L': 0.01,     # H (điện cảm nhỏ hơn)
+            'R': 1.0,      # Ω (điện trở hợp lý)
+            'Kb': 0.05,    # V·s/rad
+            'Km': 0.05,    # N·m/A (moment mạnh hơn)
+            'Kf': 0.001,   # N·m·s/rad (ma sát nhỏ)
+            'J': 0.001,    # kg·m² (inertia nhỏ, nhanh đáp ứng)
+            'Td': 0.001    # s
+        }
+
+    def get_default_dc_motor_tf(self):
+        para = self.get_default_dc_motor_params()
+        L = para['L']
+        R = para['R']
+        Kb = para['Kb']
+        Km = para['Km']
+        Kf = para['Kf']
+        J = para['J']
+        Td = para['Td']
+
+        num = [Km]
+        den = [L*J, L*Kf + R*J, R*Kf + Km*Kb]
+        return num, den
+    
+    def get_default_sampling_time(self):
+        return 0.01
+    
+    def get_default_runtime(self):
+        return 10
+
+    def set_default_dc_motor_plant(self):
+        num, den = self.get_default_dc_motor_tf()
+        self.plant['num_cont'] = num
+        self.plant['den_cont'] = den
+
+    #---------------- Default narma-l2 params ----------------#
+    def get_default_narma_l2_params(self):
+        return {
+            "nu": 4,
+            "ny": 4,
+            "hidden_size": 10,
+            "activation": "SiLU",
+            "learning_rate": 1e-2,
+            "training_epochs": 200,
+            "training_sample_size": 10000,
+            "backprop_batch_size": 32,
+            "max_control": 12.0,
+            "min_control": -12.0,
+            "sampling_time": self.get_default_sampling_time(),
+        }
+
+    def set_default_narma_l2_model(self):
+        config = self.get_default_narma_l2_params()
+        self.narma_model = NARMA_L2_Controller(
+            ny=config["ny"],
+            nu=config["nu"],
+            hidden=config["hidden_size"],
+            default_model=True
+        )
 
 # ---------------- Singleton instance ----------------
 workspace = SystemWorkspace()

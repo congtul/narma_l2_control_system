@@ -55,20 +55,7 @@ class NARMA_L2_Model:
         if not default_model:
             return
 
-        # Khởi tạo weights cố định
-        def gen_weights(h, n, a, b, bias_base):
-            w1 = torch.tensor([[a*(i+1)+b*(j+1) for j in range(n)] for i in range(h)], dtype=torch.float32)
-            b1 = torch.tensor([bias_base*(i+1) for i in range(h)], dtype=torch.float32)
-            w2 = torch.tensor([[0.05*(i+1) for i in range(h)]], dtype=torch.float32)
-            b2 = torch.tensor([0.2], dtype=torch.float32)
-            return w1, b1, w2, b2
-
-        f_w1, f_b1, f_w2, f_b2 = gen_weights(hidden, ny+nu, 0.01, 0.001, 0.1)
-        g_w1, g_b1, g_w2, g_b2 = gen_weights(hidden, ny+nu, 0.02, 0.002, 0.15)
-        g_w2 *= 0.8; g_b2.fill_(0.25)  # chỉnh lại cho g
-
-        utils.init_weights_from_arrays(self.f, {'1.weight': f_w1, '1.bias': f_b1, '2.weight': f_w2, '2.bias': f_b2})
-        utils.init_weights_from_arrays(self.g, {'1.weight': g_w1, '1.bias': g_b1, '2.weight': g_w2, '2.bias': g_b2})
+        utils.load_weights_from_file(self, os.path.join(os.path.dirname(os.path.abspath(__file__)), "default_weights.pth"))
 
 # ---------------------------
 # NARMA-L2 Controller
@@ -131,7 +118,9 @@ if __name__ == "__main__":
     )
     u_hist, y_hist = [0]*len(workspace.plant["num_disc"]), [0]*(len(workspace.plant["den_disc"])-1)
     t = np.linspace(0, 50, int(50/workspace.dt))
-    u, y = np.sin(2*t), np.zeros_like(t)
+    # u = np.ones_like(t)*6
+    u= 6*np.sin(3*t)
+    y = np.zeros_like(t)
     for i in range(len(t)):
         y[i] = utils.plant_response(workspace.plant["num_disc"], workspace.plant["den_disc"], u_hist, y_hist)
         y_hist = [y[i]] + y_hist[:-1]; u_hist = [u[i]] + u_hist[:-1]
@@ -139,7 +128,7 @@ if __name__ == "__main__":
     print("Building dataset from generated data...")
     X, Y, U = build_narma_dataset(y, u, ny=4, nu=4)
     dataset = TensorDataset(X, Y)
-    default_controller.train_narma(dataset, u_data=U, epochs=100, lr=1e-3, batch_size=32)
+    default_controller.train_narma(dataset, u_data=U, epochs=100, lr=1e-2, batch_size=32)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     default_controller.f.to(device); default_controller.g.to(device)
@@ -171,3 +160,11 @@ if __name__ == "__main__":
     plt.xlabel("Time"); plt.ylabel("Error")
     plt.title("Prediction Error of NARMA-L2 Model")
     plt.grid(True); plt.show()
+
+    save_model = False
+    # ---- Save model ----
+    if save_model:
+        torch.save({
+            "f": default_controller.f.state_dict(),
+            "g": default_controller.g.state_dict()
+        }, "backend/default_weights.pth")

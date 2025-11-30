@@ -229,11 +229,11 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
 
     def set_default_parameters(self):
         ui = self.ui
-        ui.hidden_layers_input.setText("9")
-        ui.delayed_inputs_input.setText("3")
-        ui.delayed_outputs_input.setText("2")
-        ui.training_samples_input.setText("100000")
-        ui.max_plant_input.setText("4")
+        ui.hidden_layers_input.setText("10")
+        ui.delayed_inputs_input.setText("4")
+        ui.delayed_outputs_input.setText("4")
+        ui.training_samples_input.setText("50000")
+        ui.max_plant_input.setText("12")
         ui.min_plant_input.setText("-1")
         ui.min_interval_input.setText("60")
         ui.max_plant_output.setText("100000")

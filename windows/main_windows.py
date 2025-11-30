@@ -106,8 +106,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
     def open_dc_motor_window(self):
         if not self._ensure_access():
             return
-        default_model = PlantModelDefault()
-        self.dc_motor_window = PlantModelWindow(parent=self, default_model=default_model)
+        self.dc_motor_window = PlantModelWindow(parent=self)
         self.dc_motor_window.show()
 
     def open_output_window(self):

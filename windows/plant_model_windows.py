@@ -11,23 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.plant_model_ui import Ui_plant_model
 from backend.system_workspace import workspace
 
-
-class PlantModelDefault:
-    """Chứa giá trị mặc định và các tính toán plant"""
-    def get_default_dc_motor_params(self):
-        return {
-            'L': 0.5,
-            'R': 2,
-            'Kb': 0.01,
-            'Km': 0.01,
-            'Kf': 0.1,
-            'J': 0.01,
-            'Td': 0.01
-        }
-
-
 class PlantModelWindow(QDialog):
-    def __init__(self, parent=None, default_model=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         # Load UI
@@ -35,7 +20,6 @@ class PlantModelWindow(QDialog):
         self.ui.setupUi(self)
 
         # Default model
-        self.default_model = default_model
         self.ui.custom_mode_box.setDisabled(True)
 
         mode = workspace.plant.get("mode", "dc_motor")
@@ -173,8 +157,8 @@ class PlantModelWindow(QDialog):
         self.ui.dc_motor_box.setDisabled(is_checked)
         self.ui.custom_box.setDisabled(is_checked)
 
-        if is_checked and self.default_model:
-            defaults = self.default_model.get_default_dc_motor_params()
+        if is_checked:
+            defaults = workspace.get_default_dc_motor_params()
             self.ui.motor_L.setText(str(defaults['L']))
             self.ui.motor_R.setText(str(defaults['R']))
             self.ui.motor_Kb.setText(str(defaults['Kb']))
@@ -193,7 +177,6 @@ class PlantModelWindow(QDialog):
 # ---------------- Main ----------------
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    default_model = PlantModelDefault()
-    win = PlantModelWindow(default_model=default_model)
+    win = PlantModelWindow()
     win.show()
     sys.exit(app.exec_())

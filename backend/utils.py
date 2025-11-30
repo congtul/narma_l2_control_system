@@ -29,10 +29,23 @@ def plant_response(num_disc, den_disc, u_hist, y_hist):
     """
     return -np.sum(den_disc[1:] * np.array(y_hist)) + np.sum(num_disc * np.array(u_hist))
 
-def load_weights_from_file(model: nn.Module, file_path: str):
-    state_dict = torch.load(file_path)
-    model.load_state_dict(state_dict)
-    return model
+def load_weights_from_file(controller: nn.Module, file_path: str):
+    """
+    Load weights từ file .pth vào NARMA_L2_Controller hoặc tương tự
+    file_path: chứa dict {'f': state_dict_f, 'g': state_dict_g}
+    """
+    state_dict = torch.load(file_path, map_location="cpu")  # tránh lỗi GPU nếu chưa set
+    if 'f' in state_dict:
+        controller.f.load_state_dict(state_dict['f'])
+    else:
+        raise KeyError("File weight không có key 'f'")
+    
+    if 'g' in state_dict:
+        controller.g.load_state_dict(state_dict['g'])
+    else:
+        raise KeyError("File weight không có key 'g'")
+    
+    return controller
 
 def init_weights_from_arrays(model: nn.Module, weight_dict: dict) -> nn.Module:
     linear_idx = 1
