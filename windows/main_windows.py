@@ -11,6 +11,7 @@ from windows.user_guide_window import UserGuideWindow
 from windows.model_config_window import ModelConfigWindow
 from backend.simulation_worker import SimulationWorker
 from windows.login_window import LoginDialog
+from backend.system_workspace import workspace
 
 
 class MainApp(QtWidgets.QMainWindow, Ui_Main):
@@ -155,10 +156,12 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             self.running = False
             self.update_run_button()
             return
+        
+        workspace.run_time = run_time
 
         # === Tạo thread + worker ===
         self.sim_thread = QThread()
-        self.sim_worker = SimulationWorker(dt=0.05)
+        self.sim_worker = SimulationWorker()
         self.sim_worker.moveToThread(self.sim_thread)
 
         # Signal-slot

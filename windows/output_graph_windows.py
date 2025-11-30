@@ -222,25 +222,41 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
         QtWidgets.QMessageBox.information(self, "Saved", f"Graph saved as {filename1} and {filename2}\nMetrics saved as {csv_fname}")
 
 if __name__ == "__main__":
+    from PyQt5.QtCore import QThread
+    from backend.simulation_worker import SimulationWorker
     app = QtWidgets.QApplication(sys.argv)
+
+    # --- Tạo cửa sổ đồ thị ---
     w = OutputGraphWindow()
     w.show()
-    # Lấy dữ liệu từ generate_motor_data
-    t_arr, r_arr, y_arr, y_pred_arr, u_arr = generate_motor_data(time_end=15)
-    data_len = len(t_arr)
-    index = 0  # index hiện tại
 
-    # Giả lập timer gửi dữ liệu từng bước
-    def feed_data_from_array():
-        global index
-        if index < data_len:
-            w.append_data(t_arr[index], r_arr[index], y_arr[index], y_pred_arr[index], u_arr[index])
-            index += 1
-        else:
-            timer.stop()  # dừng khi hết dữ liệu
+    # --- Tạo worker + thread ---
+    thread = QThread()
+    worker = SimulationWorker()
 
-    timer = QtCore.QTimer()
-    timer.timeout.connect(feed_data_from_array)
-    timer.start(50)  # mỗi 50 ms gửi 1 sample
+    worker.moveToThread(thread)
+
+    # ====== NỐI SIGNAL TỚI GRAPH WINDOW ======
+    def on_data_ready(t, r, y, y_pred, u):
+        w.append_data(t, r, y, y_pred, u)
+
+    worker.data_ready.connect(on_data_ready)
+    worker.finished.connect(thread.quit)
+
+    # ====== Start worker khi thread bắt đầu ======
+    thread.started.connect(worker.run)
+
+    # ====== Khi đóng cửa sổ thì stop worker ======
+    def on_close():
+        worker.stop()
+        thread.quit()
+        thread.wait()
+
+    w.destroyed.connect(on_close)
+
+    # ====== Start thread ======
+    thread.start()
+    print("Simulation started.")
 
     sys.exit(app.exec_())
+

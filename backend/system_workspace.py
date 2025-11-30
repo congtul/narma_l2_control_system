@@ -13,7 +13,7 @@ class SystemWorkspace:
 
     def __init__(self):
         self.dt = self.get_default_sampling_time()  # sampling time
-        self.runtime = self.get_default_runtime()  # total simulation time
+        self.run_time = self.get_default_runtime()  # total simulation time
         # ---------------- Plant model ----------------
         self.plant = {
             "mode": "dc_motor",  # "dc_motor" or "custom"

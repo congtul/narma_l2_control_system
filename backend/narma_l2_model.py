@@ -82,6 +82,10 @@ class NARMA_L2_Controller(nn.Module):
         self.ny, self.nu, self.epsilon = ny, nu, epsilon
         model = NARMA_L2_Model(ny, nu, hidden, default_model)
         self.f, self.g = model.f, model.g
+        self.max_control = 12.0
+        self.min_control = -12.0
+        self.max_output = 160.0
+        self.min_output = -160.0
 
     def compute_control(self, y_hist, u_hist, y_ref_future):
         # y_hist, u_hist: 1D tensors length ny and nu
@@ -90,7 +94,8 @@ class NARMA_L2_Controller(nn.Module):
         g_out = self.g(x).view(-1)[0]
         # add small epsilon in direction of sign once
         g_k = g_out + self.epsilon * torch.sign(g_out)
-        return ((y_ref_future - f_k) / g_k).item()
+        u_k = torch.clamp((y_ref_future - f_k) / g_k, self.min_control, self.max_control)
+        return u_k.item()
     
     def narma_forward(self, x_history, u_k, device=None):
         # x_history: either 1D or 2D (batch, features)
@@ -130,7 +135,7 @@ class NARMA_L2_Controller(nn.Module):
         # Ensure train_ds yields u directly: if not, expect train_ds to be (x,y) and user passed u externally.
         # We'll support the common case where train_ds is (x,y,u)
         sample_len = len(train_ds[0])
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=False)
 
         val_loader = None
         if val_data is not None:
@@ -150,7 +155,8 @@ class NARMA_L2_Controller(nn.Module):
         scaler = torch.cuda.amp.GradScaler() if (use_amp and torch.cuda.is_available()) else None
 
         for ep in range(epochs):
-            self.f.train(); self.g.train()
+            self.f.train() 
+            self.g.train()
             train_loss_acc = 0.0
             n_train = 0
 
@@ -246,9 +252,11 @@ if __name__ == "__main__":
     workspace.plant["num_disc"], workspace.plant["den_disc"] = utils.discretize_tf(
         workspace.plant["num_cont"], workspace.plant["den_cont"], workspace.dt
     )
+    print("num disc:", workspace.plant["num_disc"])
+    print("den disc:", workspace.plant["den_disc"])
     u_hist_list, y_hist_list = [0]*len(workspace.plant["num_disc"]), [0]*(len(workspace.plant["den_disc"])-1)
-    t = np.linspace(0, 50, int(50/workspace.dt))
-    u= 5*np.sin(1*t)
+    t = np.linspace(0, 10, int(10/workspace.dt)+1)
+    u= 12*np.sin(5*t)
     y = np.zeros_like(t)
     for i in range(len(t)):
         y[i] = utils.plant_response(workspace.plant["num_disc"], workspace.plant["den_disc"], u_hist_list, y_hist_list)
@@ -259,11 +267,11 @@ if __name__ == "__main__":
 
     # 70% train, 15% val, 15% test
     X_train, X_tmp, Y_train, Y_tmp, U_train, U_tmp = train_test_split(
-        X.numpy(), Y.numpy(), U.numpy(), test_size=0.30, shuffle=True
+        X.numpy(), Y.numpy(), U.numpy(), test_size=0.30, shuffle=False
     )
 
     X_val, X_test, Y_val, Y_test, U_val, U_test = train_test_split(
-        X_tmp, Y_tmp, U_tmp, test_size=0.50, shuffle=True
+        X_tmp, Y_tmp, U_tmp, test_size=0.50, shuffle=False
     )
 
     # tạo TensorDataset with u included so dataloader yields (x,y,u)
@@ -313,6 +321,10 @@ if __name__ == "__main__":
         y_hist_seq.append(y[k]); u_hist_seq.append(u[k])
 
     y_pred_np, y_real_np, t_plot = np.array(y_pred), y[delay:], t[delay:]
+
+    save_model = False
+    if save_model:
+        torch.save({ "f": default_controller.f.state_dict(), "g": default_controller.g.state_dict() }, "backend/default_weights.pth")
 
     # ---- Plot 1: y_real vs y_pred ----
     plt.figure(figsize=(10, 4))
