@@ -6,6 +6,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.model_config_ui import Ui_MainWindow  # UI generated from Qt Designer
 from windows.model_train_window import ModelTrainWindow
 from backend.system_workspace import workspace
+from backend import utils
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class ModelConfigWindow(QtWidgets.QMainWindow):
@@ -52,7 +55,8 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
 
         self.ui.import_weight_btn.clicked.connect(self.open_network_weight)
         self.ui.generate_data_btn.clicked.connect(self.run_generate_data)
-        self.ui.import_data_btn.clicked.connect(self.open_network_weight)
+        self.ui.export_data_btn.clicked.connect(self.handle_export_data)
+        self.ui.import_data_btn.clicked.connect(self.handle_import_data)
         self.ui.cancel_btn.clicked.connect(self.close)
         self.ui.train_btn.clicked.connect(self.run_model_train)
         self.ui.ok_btn.clicked.connect(self.close)
@@ -131,12 +135,103 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         if not self.all_valid_no_epoch():
             QtWidgets.QMessageBox.warning(self, "Invalid input", "Please fill all fields (epochs optional).")
             return
-        import subprocess
-        import json
-        import sys
-        params = self.collect_common_parameters()
-        subprocess.Popen([sys.executable, "generate_data.py", json.dumps(params)],
-                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        
+        workspace.plant["num_disc"], workspace.plant["den_disc"] = utils.discretize_tf(
+            workspace.plant["num_cont"], workspace.plant["den_cont"], workspace.dt
+        )
+        print("num disc:", workspace.plant["num_disc"])
+        print("den disc:", workspace.plant["den_disc"])
+        u_hist_list, y_hist_list = [0]*len(workspace.plant["num_disc"]), [0]*(len(workspace.plant["den_disc"])-1)
+        data_samples = int(self.ui.training_samples_input.text())
+        t = np.linspace(0, (data_samples-1) * workspace.dt, data_samples)
+        u = utils.generate_random_control_signal_sequence(
+            float(self.ui.min_plant_input.text()), float(self.ui.max_plant_input.text()),
+            float(self.ui.min_interval_input.text()), float(self.ui.max_interval_input.text()),
+            t
+        )
+        y = np.zeros(data_samples)
+        for i in range(data_samples):
+            y[i] = utils.plant_response(
+                workspace.plant["num_disc"], workspace.plant["den_disc"],
+                u_hist_list, y_hist_list
+            )
+
+            if y[i] > float(self.ui.max_plant_output.text()):
+                y[i] = float(self.ui.max_plant_output.text())
+            elif y[i] < float(self.ui.min_plant_output.text()):
+                y[i] = float(self.ui.min_plant_output.text())
+
+            u_hist_list = [u[i]] + u_hist_list[:-1]
+            y_hist_list = [y[i]] + y_hist_list[:-1]
+
+        plt.figure(figsize=(10,6))
+
+        plt.subplot(2,1,1)
+        plt.plot(t, u, label="Control signal u(t)")
+        plt.ylabel("u")
+        plt.grid(True)
+
+        plt.subplot(2,1,2)
+        plt.plot(t, y, label="Plant output y(t)", color='orange')
+        plt.xlabel("t (s)")
+        plt.ylabel("y")
+        plt.grid(True)
+
+        plt.tight_layout()
+        plt.show()
+        workspace.dataset = {"t": t, "u": u, "y": y}
+
+    def handle_export_data(self):
+        if not hasattr(workspace, "dataset") or workspace.dataset is None:
+            QtWidgets.QMessageBox.warning(self, "No Data", "No dataset available to export. Generate data first.")
+            return
+
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Save Dataset",
+            "",
+            "CSV Files (*.csv)"
+        )
+        if not path:
+            return
+
+        try:
+            t = workspace.dataset["t"]
+            u = workspace.dataset["u"]
+            y = workspace.dataset["y"]
+
+            data = np.column_stack((t, u, y))
+            np.savetxt(path, data, delimiter=",", header="t,u,y", comments="")
+
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Save Error", f"Could not save dataset:\n{e}")
+            return
+
+        QtWidgets.QMessageBox.information(self, "Saved", "Dataset saved successfully.")
+
+    def handle_import_data(self):
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Load Dataset",
+            "",
+            "CSV Files (*.csv)"
+        )
+        if not path:
+            return
+
+        try:
+            data = np.loadtxt(path, delimiter=",", skiprows=1)
+            t = data[:, 0]
+            u = data[:, 1]
+            y = data[:, 2]
+
+            workspace.dataset = {"t": t, "u": u, "y": y}
+
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Load Error", f"Could not load dataset:\n{e}")
+            return
+
+        QtWidgets.QMessageBox.information(self, "Loaded", "Dataset loaded successfully.")
 
     def open_network_weight(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -228,20 +323,22 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         workspace.narma_config = self.collect_train_parameters()
 
     def set_default_parameters(self):
+        default_params = workspace.get_default_narma_l2_params()
         ui = self.ui
-        ui.hidden_layers_input.setText("10")
-        ui.delayed_inputs_input.setText("4")
-        ui.delayed_outputs_input.setText("4")
-        ui.training_samples_input.setText("50000")
-        ui.max_plant_input.setText("12")
-        ui.min_plant_input.setText("-1")
-        ui.min_interval_input.setText("60")
-        ui.max_plant_output.setText("100000")
-        ui.min_plant_output.setText("0")
-        ui.max_interval_input.setText("0")
-        ui.training_epochs_input.setText("100")
-        ui.use_validation_checkbox.setChecked(True)
-        ui.use_test_checkbox.setChecked(True)
+        ui.hidden_layers_input.setText(str(default_params["hidden_size"]))
+        ui.delayed_inputs_input.setText(str(default_params["nu"]))
+        ui.delayed_outputs_input.setText(str(default_params["ny"]))
+        ui.training_samples_input.setText(str(default_params.get("training_sample_size")))
+        ui.max_plant_input.setText(str(default_params.get("max_control")))
+        ui.min_plant_input.setText(str(default_params.get("min_control")))
+        ui.min_interval_input.setText(str(default_params.get("min_interval")))
+        ui.max_plant_output.setText(str(default_params.get("max_output")))
+        ui.min_plant_output.setText(str(default_params.get("min_output")))
+        ui.max_interval_input.setText(str(default_params.get("max_interval")))
+        ui.training_epochs_input.setText(str(default_params.get("training_epochs")))
+        ui.use_validation_checkbox.setChecked(default_params.get("use_validation", True))
+        ui.use_test_checkbox.setChecked(default_params.get("use_test_data", True))
+        workspace.set_default_narma_l2_model()
         self.update_buttons_state()
 
     def restore_saved_parameters(self):

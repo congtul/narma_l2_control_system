@@ -8,40 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ---------------------------
-# Dataset builder (vectorized)
-# ---------------------------
-def build_narma_dataset(y_data, u_data, ny=4, nu=4):
-    """
-    Vectorized dataset builder using numpy sliding window view.
-    Returns tensors: X (N, ny+nu), Y (N,), U (N,)
-    """
-    y = np.asarray(y_data, dtype=np.float32)
-    u = np.asarray(u_data, dtype=np.float32)
-    delay = max(ny, nu)
-    n_total = len(y) - delay
-    if n_total <= 0:
-        return torch.empty(0, ny + nu), torch.empty(0), torch.empty(0)
-
-    # build sliding windows for y-history and u-history
-    # For y-history we need last ny values before k, i.e. y[k-ny:k] for k in [delay..len(y)-1]
-    # sliding_window_view returns windows of length ny for y[0..len(y)-1]
-    from numpy.lib.stride_tricks import sliding_window_view
-    y_win = sliding_window_view(y, window_shape=ny)  # shape (len(y)-ny+1, ny)
-    u_win = sliding_window_view(u, window_shape=nu)
-
-    # We need the windows that end at indices k-1 for k=delay..len(y)-1 -> those correspond to rows with index = (delay-1)...(len(y)-1)-1 => start = delay-ny?
-    # Simpler: pick windows starting at indices (delay - ny) .. (len(y) - ny - 1)
-    # But easier: build X by stacking y[k-ny:k] and u[k-nu:k] for k in range(delay, len(y))
-    # Using slices:
-    y_hist_matrix = y_win[delay - ny : delay - ny + n_total]
-    u_hist_matrix = u_win[delay - nu : delay - nu + n_total]
-
-    X = np.concatenate([y_hist_matrix, u_hist_matrix], axis=1)
-    Y = y[delay:]
-    U = u[delay:]
-    return torch.from_numpy(X).float(), torch.from_numpy(Y).float(), torch.from_numpy(U).float()
-
-# ---------------------------
 # Plant model: f/g
 # ---------------------------
 class ANN_Model(nn.Module):
@@ -77,15 +43,19 @@ class NARMA_L2_Model:
 # NARMA-L2 Controller
 # ---------------------------
 class NARMA_L2_Controller(nn.Module):
-    def __init__(self, ny=4, nu=4, hidden=10, epsilon=1e-3, default_model=False):
+    def __init__(self, ny=4, nu=4, hidden=10, epsilon=1e-3, max_control=12.0, min_control=-12.0, max_output=160.0, min_output=-160.0, epochs=200, lr=1e-3, batch_size=32, patience=10, default_model=False):
         super().__init__()
         self.ny, self.nu, self.epsilon = ny, nu, epsilon
         model = NARMA_L2_Model(ny, nu, hidden, default_model)
         self.f, self.g = model.f, model.g
-        self.max_control = 12.0
-        self.min_control = -12.0
-        self.max_output = 160.0
-        self.min_output = -160.0
+        self.max_control = max_control
+        self.min_control = min_control
+        self.max_output = max_output
+        self.min_output = min_output
+        self.epochs = epochs
+        self.lr = lr
+        self.batch_size = batch_size
+        self.patience = patience
 
     def compute_control(self, y_hist, u_hist, y_ref_future):
         # y_hist, u_hist: 1D tensors length ny and nu
@@ -116,10 +86,6 @@ class NARMA_L2_Controller(nn.Module):
         self,
         train_ds: TensorDataset,
         val_data: TensorDataset = None,
-        epochs: int = 200,
-        lr: float = 1e-3,
-        batch_size: int = 32,
-        patience: int = 10,
         device: torch.device = None,
         use_amp: bool = False
     ):
@@ -135,14 +101,13 @@ class NARMA_L2_Controller(nn.Module):
         # Ensure train_ds yields u directly: if not, expect train_ds to be (x,y) and user passed u externally.
         # We'll support the common case where train_ds is (x,y,u)
         sample_len = len(train_ds[0])
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=False)
+        train_loader = DataLoader(train_ds, batch_size=self.batch_size, shuffle=False)
 
         val_loader = None
         if val_data is not None:
-            val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
-
+            val_loader = DataLoader(val_data, batch_size=self.batch_size, shuffle=False)
         params = list(self.f.parameters()) + list(self.g.parameters())
-        optim = torch.optim.Adam(params, lr=lr)
+        optim = torch.optim.Adam(params, lr=self.lr)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optim, factor=0.5, patience=5, verbose=False
         )
@@ -154,7 +119,7 @@ class NARMA_L2_Controller(nn.Module):
 
         scaler = torch.cuda.amp.GradScaler() if (use_amp and torch.cuda.is_available()) else None
 
-        for ep in range(epochs):
+        for ep in range(self.epochs):
             self.f.train() 
             self.g.train()
             train_loss_acc = 0.0
@@ -212,7 +177,7 @@ class NARMA_L2_Controller(nn.Module):
                 val_loss = val_loss_acc / max(1, n_val)
                 scheduler.step(val_loss)
 
-                print(f"Epoch {ep+1}/{epochs}  Train={train_loss:.6f}  Val={val_loss:.6f}")
+                print(f"Epoch {ep+1}/{self.epochs}  Train={train_loss:.6f}  Val={val_loss:.6f}")
 
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
@@ -223,12 +188,11 @@ class NARMA_L2_Controller(nn.Module):
                     }
                 else:
                     patience_counter += 1
-                    if patience_counter >= patience:
+                    if patience_counter >= self.patience:
                         print("Early stopping triggered.")
                         break
             else:
-                print(f"Epoch {ep+1}/{epochs}  Train={train_loss:.6f}")
-
+                print(f"Epoch {ep+1}/{self.epochs}  Train={train_loss:.6f}")
         # Load best weights if available
         if best_state is not None:
             self.f.load_state_dict(best_state["f"])
@@ -263,7 +227,7 @@ if __name__ == "__main__":
         y_hist_list = [y[i]] + y_hist_list[:-1]; u_hist_list = [u[i]] + u_hist_list[:-1]
 
     print("Building dataset from generated data...")
-    X, Y, U = build_narma_dataset(y, u, ny=4, nu=4)
+    X, Y, U = utils.build_narma_dataset(y, u, ny=4, nu=4)
 
     # 70% train, 15% val, 15% test
     X_train, X_tmp, Y_train, Y_tmp, U_train, U_tmp = train_test_split(
@@ -279,7 +243,7 @@ if __name__ == "__main__":
     val_ds   = TensorDataset(torch.tensor(X_val).float(),   torch.tensor(Y_val).float(),   torch.tensor(U_val).float())
     test_ds  = TensorDataset(torch.tensor(X_test).float(),  torch.tensor(Y_test).float(),  torch.tensor(U_test).float())
 
-    default_controller.train_narma(train_ds, val_data=val_ds, epochs=100, lr=1e-2, batch_size=32, use_amp=False)
+    default_controller.train_narma(train_ds, val_data=val_ds, use_amp=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     default_controller.f.to(device)
     default_controller.g.to(device)

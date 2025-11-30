@@ -22,6 +22,11 @@ class SystemWorkspace:
 
         # ---------------- NARMA-L2 model ----------------
         self.set_default_narma_l2_model()
+        self.dataset = {
+            "t": [],
+            "u": [],
+            "y": [],
+        }
 
         # ---------------- Reference signal ----------------
         self.reference = {
@@ -131,7 +136,7 @@ class SystemWorkspace:
             "ny": 4,
             "hidden_size": 10,
             "activation": "SiLU",
-            "learning_rate": 1e-2,
+            "learning_rate": 1e-3,
             "training_epochs": 200,
             "training_sample_size": 10000,
             "backprop_batch_size": 32,
@@ -139,9 +144,10 @@ class SystemWorkspace:
             "min_control": -12.0,
             "max_output": 160.0, # tốc độ giới hạn (rad/s)
             "min_output": -160.0, # tốc độ giới hạn (rad/s)
-            "min_interval": 0.05,
-            "max_interval": 0.5,
+            "min_interval": 0.1,
+            "max_interval": 1,
             "sampling_time": self.get_default_sampling_time(),
+            "patience": 10,
             "use_validation": True,
             "use_test_data": True
         }
@@ -152,6 +158,15 @@ class SystemWorkspace:
             ny=config["ny"],
             nu=config["nu"],
             hidden=config["hidden_size"],
+            epsilon=config["learning_rate"],
+            max_control=config["max_control"],
+            min_control=config["min_control"],
+            max_output=config["max_output"],
+            min_output=config["min_output"],
+            epochs=config["training_epochs"],
+            lr=config["learning_rate"],
+            batch_size=config["backprop_batch_size"],
+            patience=config["patience"],
             default_model=True
         )
 
