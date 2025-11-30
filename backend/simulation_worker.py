@@ -21,7 +21,7 @@ class SimulationWorker(QObject):
         workspace.plant["num_disc"], workspace.plant["den_disc"] = utils.discretize_tf(workspace.plant["num_cont"], workspace.plant["den_cont"], workspace.dt)
         u_hist = [0] * len(workspace.plant["num_disc"])
         y_hist = [0] * (len(workspace.plant["den_disc"]) - 1)
-        while self.running:
+        while (self.running) and (t <= workspace.run_time):
             y = utils.plant_response(workspace.plant["num_disc"], workspace.plant["den_disc"], u_hist, y_hist)
             y_pred = y*0.95 + np.random.normal(0, 0.02)
 
@@ -34,8 +34,6 @@ class SimulationWorker(QObject):
             time.sleep(self.dt)
             t += self.dt
 
-            if t >= workspace.run_time:
-                break
         self.finished.emit()
 
     def stop(self):
