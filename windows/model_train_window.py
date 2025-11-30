@@ -94,7 +94,7 @@ class TrainingPlotWindow(QtWidgets.QMainWindow):
 
 # ------------------- Main Window -------------------
 class ModelTrainWindow(QtWidgets.QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, epoch_total=100):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
         self.ui = Ui_MainWindow()
@@ -105,8 +105,9 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
         self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
 
         # --- Các biến nội bộ ---
-        self.epoch_total = 100
+        self.epoch_total = int(epoch_total)
         self.epoch_count = 0
+        self.demo_history = {"t": [], "inp": [], "plant": [], "err": [], "nn": []}
 
         # --- Gắn signal ---
         self.ui.performance_btn.clicked.connect(self._demo_update)
@@ -124,25 +125,47 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
     def _set_epoch_count(self, current: int, total: int = None):
         if total is not None:
             self.ui.progress_bar.setRange(0, int(total))
+            self.ui.progress_max_label.setText(str(int(total)))
         self.ui.progress_bar.setValue(int(current))
 
     def _tick(self):
         if self.epoch_count < self.epoch_total:
             self.epoch_count += 1
             self._set_epoch_count(self.epoch_count, self.epoch_total)
+            # Update plots with fresh demo data each tick to show "real-time" change
+            self._demo_update()
         else:
             self.demo_timer.stop()
 
     def _stop_training(self):
         self.demo_timer.stop()
+        self._reset_demo_history()
 
     def _demo_update(self):
-        t = np.linspace(0, 50, 500)
-        inp = np.sin(0.4*t) + 0.2*np.random.randn(len(t))
-        plant = np.sin(0.4*t + 0.6) + 0.3*np.random.randn(len(t))
-        err = (plant - inp) * 0.01
-        nn = inp + 0.1*np.random.randn(len(t))
-        self.plot_win.update_plots(t, inp, plant, err, nn)
+        # Append one point per epoch to mimic incremental training metrics
+        e = self.epoch_count
+        t_val = e
+        inp_val = np.sin(0.1 * e) + 0.1 * np.random.randn()
+        plant_val = np.sin(0.1 * e + 0.3) + 0.15 * np.random.randn()
+        err_val = plant_val - inp_val
+        nn_val = inp_val + 0.05 * np.random.randn()
+
+        self.demo_history["t"].append(t_val)
+        self.demo_history["inp"].append(inp_val)
+        self.demo_history["plant"].append(plant_val)
+        self.demo_history["err"].append(err_val)
+        self.demo_history["nn"].append(nn_val)
+
+        self.plot_win.update_plots(
+            self.demo_history["t"],
+            self.demo_history["inp"],
+            self.demo_history["plant"],
+            self.demo_history["err"],
+            self.demo_history["nn"],
+        )
+
+    def _reset_demo_history(self):
+        self.demo_history = {"t": [], "inp": [], "plant": [], "err": [], "nn": []}
 
 
 # ------------------- Main -------------------

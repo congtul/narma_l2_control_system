@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-import sys, os
+import sys, os, json
 from PyQt5 import QtCore, QtGui, QtWidgets
+import torch
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.model_config_ui import Ui_MainWindow  # UI generated from Qt Designer
 from windows.model_train_window import ModelTrainWindow
@@ -19,8 +20,8 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         self.required_edits_all = [
             self.ui.hidden_layers_input, self.ui.delayed_inputs_input, self.ui.delayed_outputs_input,
             self.ui.training_samples_input, self.ui.max_plant_input, self.ui.min_plant_input,
-            self.ui.max_interval_left_input, self.ui.max_plant_output, self.ui.min_plant_output,
-            self.ui.max_interval_right_input, self.ui.training_epochs_input
+            self.ui.min_interval_input, self.ui.max_plant_output, self.ui.min_plant_output,
+            self.ui.max_interval_input, self.ui.training_epochs_input
         ]
         self.required_edits_no_epoch = [w for w in self.required_edits_all if w is not self.ui.training_epochs_input]
 
@@ -41,8 +42,8 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         for w in [self.ui.hidden_layers_input, self.ui.delayed_inputs_input, self.ui.delayed_outputs_input,
                   self.ui.training_samples_input, self.ui.training_epochs_input]:
             w.setValidator(int_validator)
-        for w in [self.ui.max_plant_input, self.ui.min_plant_input, self.ui.max_interval_left_input,
-                  self.ui.max_plant_output, self.ui.min_plant_output, self.ui.max_interval_right_input]:
+        for w in [self.ui.max_plant_input, self.ui.min_plant_input, self.ui.min_interval_input,
+                  self.ui.max_plant_output, self.ui.min_plant_output, self.ui.max_interval_input]:
             w.setValidator(double_validator)
 
     def _connect_signals(self):
@@ -79,6 +80,12 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
     def update_buttons_state(self):
         self.ui.train_btn.setEnabled(self.all_valid())           # Train
         self.ui.generate_data_btn.setEnabled(self.all_valid_no_epoch())  # Generate Data
+        base_ok = all(self._is_valid(w) for w in [
+            self.ui.hidden_layers_input,
+            self.ui.delayed_inputs_input,
+            self.ui.delayed_outputs_input,
+        ])
+        self.ui.import_weight_btn.setEnabled(base_ok)
 
     # ---------------- Collect parameters ----------------
     def collect_common_parameters(self):
@@ -90,10 +97,10 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             "train_samples": int(ui.training_samples_input.text()),
             "max_in_l": float(ui.max_plant_input.text()),
             "min_in_l": float(ui.min_plant_input.text()),
-            "max_int_l": float(ui.max_interval_left_input.text()),
+            "max_int_l": float(ui.min_interval_input.text()),
             "min_in_r": float(ui.max_plant_output.text()),
             "max_in_r": float(ui.min_plant_output.text()),
-            "min_int_r": float(ui.max_interval_right_input.text()),
+            "min_int_r": float(ui.max_interval_input.text()),
             "use_val": ui.use_validation_checkbox.isChecked(),
             "use_test": ui.use_test_checkbox.isChecked(),
         }
@@ -110,7 +117,11 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             return
 
         if getattr(self, "train_win", None) is None:
-            self.train_win = ModelTrainWindow(parent=self)
+            try:
+                epochs = int(self.ui.training_epochs_input.text())
+            except ValueError:
+                epochs = 100
+            self.train_win = ModelTrainWindow(parent=self, epoch_total=epochs)
             self.destroyed.connect(self.train_win.close)
             self.train_win.destroyed.connect(lambda: setattr(self, "train_win", None))
 
@@ -130,67 +141,85 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
     def open_network_weight(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
-            "Select Config File",
+            "Select Network Weight File",
             "",
             "JSON Files (*.json)"
         )
         if not path:
             return
         try:
-            import json
             with open(path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Load Error", f"Could not read JSON file:\n{e}")
             return
 
-        ok, msg = self._validate_config_dict(cfg)
+        ok, msg = self._validate_weight_file(cfg)
         if not ok:
-            QtWidgets.QMessageBox.warning(self, "Invalid Config", msg)
+            QtWidgets.QMessageBox.warning(self, "Invalid Weight File", msg)
             return
 
-        self._apply_config_dict(cfg)
-        
-        QtWidgets.QMessageBox.information(self, "Loaded", "Configuration loaded.")
-        self.update_buttons_state()
+        try:
+            self._store_weight_file(cfg)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Load Error", f"Failed to load weights:\n{e}")
+            return
 
-    def _validate_config_dict(self, cfg):
-        required_nums = [
-            "hidden", "delay_in", "delay_out", "train_samples",
-            "max_in_l", "min_in_l", "max_int_l",
-            "min_in_r", "max_in_r", "min_int_r", "epochs"
-        ]
-        for key in required_nums:
+        QtWidgets.QMessageBox.information(self, "Loaded", "Weights loaded successfully.")
+
+    def _validate_weight_file(self, cfg):
+        # required meta
+        for key in ["ny", "nu", "hidden", "f", "g"]:
             if key not in cfg:
-                return False, f"Missing numeric field: {key}"
-            if not isinstance(cfg[key], (int, float)):
-                return False, f"Field '{key}' must be a number."
-        for key in ["use_val", "use_test"]:
-            if key in cfg and not isinstance(cfg[key], bool):
-                return False, f"Field '{key}' must be true/false."
+                return False, f"Missing field: {key}"
+        # compare with UI inputs
+        try:
+            ny = int(self.ui.delayed_outputs_input.text())
+            nu = int(self.ui.delayed_inputs_input.text())
+            hidden = int(self.ui.hidden_layers_input.text())
+        except ValueError:
+            return False, "Invalid architecture fields in UI."
+        if cfg["ny"] != ny or cfg["nu"] != nu or cfg["hidden"] != hidden:
+            return False, "Weight file architecture does not match current settings."
+
+        def _check_block(block, name):
+            for key in ["w1", "b1", "w2", "b2"]:
+                if key not in block:
+                    return False, f"Missing {name}.{key}"
+            w1 = torch.tensor(block["w1"])
+            b1 = torch.tensor(block["b1"])
+            w2 = torch.tensor(block["w2"])
+            b2 = torch.tensor(block["b2"]).reshape(-1)
+            if w1.shape != (hidden, ny + nu):
+                return False, f"{name}.w1 shape must be ({hidden}, {ny+nu})"
+            if b1.shape != (hidden,):
+                return False, f"{name}.b1 shape must be ({hidden},)"
+            if w2.shape != (1, hidden):
+                return False, f"{name}.w2 shape must be (1, {hidden})"
+            if b2.shape != (1,):
+                return False, f"{name}.b2 shape must be (1,)"
+            return True, (w1, b1, w2, b2)
+
+        ok_f, msg_or_tensors_f = _check_block(cfg["f"], "f")
+        if not ok_f:
+            return False, msg_or_tensors_f
+        ok_g, msg_or_tensors_g = _check_block(cfg["g"], "g")
+        if not ok_g:
+            return False, msg_or_tensors_g
+
+        cfg["_parsed_f"] = msg_or_tensors_f
+        cfg["_parsed_g"] = msg_or_tensors_g
         return True, ""
 
-    def _apply_config_dict(self, cfg):
-        mapping = {
-            "hidden": self.ui.hidden_layers_input,
-            "delay_in": self.ui.delayed_inputs_input,
-            "delay_out": self.ui.delayed_outputs_input,
-            "train_samples": self.ui.training_samples_input,
-            "max_in_l": self.ui.max_plant_input,
-            "min_in_l": self.ui.min_plant_input,
-            "max_int_l": self.ui.max_interval_left_input,
-            "min_in_r": self.ui.max_plant_output,
-            "max_in_r": self.ui.min_plant_output,
-            "min_int_r": self.ui.max_interval_right_input,
-            "epochs": self.ui.training_epochs_input,
+    def _store_weight_file(self, cfg):
+        # Store structured weights for later loading
+        workspace.narma_weights = {
+            "ny": cfg.get("ny"),
+            "nu": cfg.get("nu"),
+            "hidden": cfg.get("hidden"),
+            "f": cfg.get("f", {}),
+            "g": cfg.get("g", {}),
         }
-        for key, widget in mapping.items():
-            if key in cfg:
-                widget.setText(str(cfg[key]))
-        if "use_val" in cfg:
-            self.ui.use_validation_checkbox.setChecked(bool(cfg.get("use_val")))
-        if "use_test" in cfg:
-            self.ui.use_test_checkbox.setChecked(bool(cfg.get("use_test")))
 
     def handle_save(self):
         if not self.all_valid():
@@ -206,10 +235,10 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         ui.training_samples_input.setText("100000")
         ui.max_plant_input.setText("4")
         ui.min_plant_input.setText("-1")
-        ui.max_interval_left_input.setText("60")
+        ui.min_interval_input.setText("60")
         ui.max_plant_output.setText("100000")
         ui.min_plant_output.setText("0")
-        ui.max_interval_right_input.setText("0")
+        ui.max_interval_input.setText("0")
         ui.training_epochs_input.setText("100")
         ui.use_validation_checkbox.setChecked(True)
         ui.use_test_checkbox.setChecked(True)
@@ -225,10 +254,10 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             "train_samples": self.ui.training_samples_input,
             "max_in_l": self.ui.max_plant_input,
             "min_in_l": self.ui.min_plant_input,
-            "max_int_l": self.ui.max_interval_left_input,
+            "max_int_l": self.ui.min_interval_input,
             "min_in_r": self.ui.max_plant_output,
             "max_in_r": self.ui.min_plant_output,
-            "min_int_r": self.ui.max_interval_right_input,
+            "min_int_r": self.ui.max_interval_input,
             "epochs": self.ui.training_epochs_input,
         }
         for key, widget in mapping.items():

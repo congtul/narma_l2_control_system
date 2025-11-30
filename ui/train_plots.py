@@ -24,7 +24,7 @@ class TrainingPlotWidget(QtWidgets.QWidget):
         titles = ["Input", "Plant Output", "Error", "NN Output"]
         for ax, t in zip(self.axes.flat, titles):
             ax.set_title(t)
-            ax.set_xlabel("time (s)")
+            ax.set_xlabel("epoch (s)")
         self.lines = [ax.plot([], [], lw=1)[0] for ax in self.axes.flat]
 
         lay = QtWidgets.QVBoxLayout(self)

@@ -24,8 +24,16 @@ class SystemWorkspace:
         }
 
         # ---------------- NARMA-L2 model ----------------
-        self.narma_model = None   # object neural net
         self.narma_config = {}    # config dict (order, hidden units...)
+        self.narma_model = None   # object neural net
+        # imported NARMA weights
+        self.narma_weights = {
+            "ny": None,
+            "nu": None,
+            "hidden": None,
+            "f": {},
+            "g": {},
+        }
 
         # ---------------- Reference signal ----------------
         self.reference = {
