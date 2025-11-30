@@ -135,9 +135,15 @@ class SystemWorkspace:
             "training_epochs": 200,
             "training_sample_size": 10000,
             "backprop_batch_size": 32,
-            "max_control": 12.0,
+            "max_control": 12.0, # voltage giới hạn
             "min_control": -12.0,
+            "max_output": 160.0, # tốc độ giới hạn (rad/s)
+            "min_output": -160.0, # tốc độ giới hạn (rad/s)
+            "min_interval": 0.05,
+            "max_interval": 0.5,
             "sampling_time": self.get_default_sampling_time(),
+            "use_validation": True,
+            "use_test_data": True
         }
 
     def set_default_narma_l2_model(self):
