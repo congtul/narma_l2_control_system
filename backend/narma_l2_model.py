@@ -27,9 +27,7 @@ class ANN_Model(nn.Module):
 # NARMA-L2 Default Model
 # ---------------------------
 class NARMA_L2_Model:
-    def __init__(self, ny=4, nu=4, hidden=10, default_model=False):
-        if default_model:
-            ny, nu, hidden = 4, 4, 10
+    def __init__(self, ny=2, nu=3, hidden=9, default_model=False):
 
         self.f = ANN_Model(ny, nu, hidden)
         self.g = ANN_Model(ny, nu, hidden)
@@ -37,7 +35,9 @@ class NARMA_L2_Model:
         if not default_model:
             return
 
-        utils.load_weights_from_file(self, os.path.join(os.path.dirname(os.path.abspath(__file__)), "default_weights.pth"))
+        # utils.load_weights_from_file(self, os.path.join(os.path.dirname(os.path.abspath(__file__)), "default_weights.pth"))
+        utils.load_weights_from_file(self, "test_result/best_4_3.pth")
+        # utils.load_weights_from_file(self, "test_result/train1.pth")
 
 # ---------------------------
 # NARMA-L2 Controller
@@ -61,10 +61,10 @@ class NARMA_L2_Controller(nn.Module):
         # y_hist, u_hist: 1D tensors length ny and nu
         x = torch.cat([y_hist, u_hist]).view(1, -1)
         f_k = self.f(x).view(-1)[0]
-        g_out = self.g(x).view(-1)[0]
-        # add small epsilon in direction of sign once
-        g_k = g_out + self.epsilon * torch.sign(g_out)
+        g_k = self.g(x).view(-1)[0]
         u_k = torch.clamp((y_ref_future - f_k) / g_k, self.min_control, self.max_control)
+        if abs(g_k.item()) < 1e-3:
+            print(f"[WARN] small g_k={g_k.item():.6f}, f_k={f_k.item():.4f}, r_next={y_ref_future}")
         return u_k.item()
     
     def narma_forward(self, x_history, u_k, device=None):

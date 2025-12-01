@@ -65,14 +65,7 @@ class TrainingWorker(QtCore.QThread):
             n_train = 0
 
             for batch in train_loader:
-                # support both (x,y,u) and (x,y)
-                if len(batch) == 3:
-                    x, y_real, u_k = batch
-                else:
-                    x, y_real = batch
-                    # try to extract u from last nu columns of x
-                    u_k = x[:, -self.controller.nu]
-
+                x, y_real, u_k = batch
                 x = x.to(device); y_real = y_real.to(device); u_k = u_k.to(device)
                 
                 optim.zero_grad()
@@ -96,11 +89,7 @@ class TrainingWorker(QtCore.QThread):
                 n_val = 0
                 with torch.no_grad():
                     for batch in val_loader:
-                        if len(batch) == 3:
-                            x, y_real, u_k = batch
-                        else:
-                            x, y_real = batch
-                            u_k = x[:, -self.controller.nu]
+                        x, y_real, u_k = batch
                         x = x.to(device); y_real = y_real.to(device); u_k = u_k.to(device)
                         y_pred = self.controller.f(x).squeeze() + self.controller.g(x).squeeze() * u_k.squeeze()
                         loss = loss_fn(y_pred, y_real.view_as(y_pred))

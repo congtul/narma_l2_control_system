@@ -133,8 +133,8 @@ class SystemWorkspace:
     def get_default_narma_l2_params(self):
         return {
             "nu": 4,
-            "ny": 4,
-            "hidden_size": 10,
+            "ny": 3,
+            "hidden_size": 9,
             "activation": "SiLU",
             "learning_rate": 1e-4,
             "training_epochs": 200,

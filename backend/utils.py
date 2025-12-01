@@ -105,31 +105,50 @@ def generate_random_control_signal_sequence(u_min, u_max,
 # ---------------------------
 def build_narma_dataset(y_data, u_data, ny=4, nu=4):
     """
-    Vectorized dataset builder using numpy sliding window view.
-    Returns tensors: X (N, ny+nu), Y (N,), U (N,)
+    Build NARMA-L2 dataset without discarding initial transient.
+    Missing past values are padded with zeros.
+
+    Returns:
+        X: (N, ny + nu)   -> contains y(k),...,y(k-ny+1), u(k-1),...,u(k-nu)
+        Y: (N,)           -> target y(k+1)
+        U: (N,)           -> actual u(k)
     """
     y = np.asarray(y_data, dtype=np.float32)
     u = np.asarray(u_data, dtype=np.float32)
-    delay = max(ny, nu)
-    n_total = len(y) - delay
-    if n_total <= 0:
-        return torch.empty(0, ny + nu), torch.empty(0), torch.empty(0)
 
-    # build sliding windows for y-history and u-history
-    # For y-history we need last ny values before k, i.e. y[k-ny:k] for k in [delay..len(y)-1]
-    # sliding_window_view returns windows of length ny for y[0..len(y)-1]
-    from numpy.lib.stride_tricks import sliding_window_view
-    y_win = sliding_window_view(y, window_shape=ny)  # shape (len(y)-ny+1, ny)
-    u_win = sliding_window_view(u, window_shape=nu)
+    N = len(y)
 
-    # We need the windows that end at indices k-1 for k=delay..len(y)-1 -> those correspond to rows with index = (delay-1)...(len(y)-1)-1 => start = delay-ny?
-    # Simpler: pick windows starting at indices (delay - ny) .. (len(y) - ny - 1)
-    # But easier: build X by stacking y[k-ny:k] and u[k-nu:k] for k in range(delay, len(y))
-    # Using slices:
-    y_hist_matrix = y_win[delay - ny : delay - ny + n_total]
-    u_hist_matrix = u_win[delay - nu : delay - nu + n_total]
+    # Output will have samples from k=0 .. N-2 (since y(k+1) must exist)
+    n_total = N - 1
+    X = np.zeros((n_total, ny + nu), dtype=np.float32)
+    Y = np.zeros((n_total,), dtype=np.float32)
+    U = np.zeros((n_total,), dtype=np.float32)
 
-    X = np.concatenate([y_hist_matrix, u_hist_matrix], axis=1)
-    Y = y[delay:]
-    U = u[delay:]
-    return torch.from_numpy(X).float(), torch.from_numpy(Y).float(), torch.from_numpy(U).float()
+    for k in range(n_total):     # k corresponds to predicting y(k+1)
+        # ----- fill y-history: y(k), y(k-1), ..., y(k-ny+1)
+        for i in range(ny):
+            idx = k - i
+            if idx >= 0:
+                X[k, i] = y[idx]
+            else:
+                X[k, i] = 0.0  # pad missing history
+
+        # ----- fill u-history: u(k-1), u(k-2), ..., u(k-nu)
+        for j in range(nu):
+            idx = k - 1 - j
+            if idx >= 0:
+                X[k, ny + j] = u[idx]
+            else:
+                X[k, ny + j] = 0.0
+
+        # Target output y(k+1)
+        Y[k] = y[k + 1]
+
+        # Ground-truth u(k) to train g() correctly
+        U[k] = u[k]
+
+    return (
+        torch.from_numpy(X).float(),
+        torch.from_numpy(Y).float(),
+        torch.from_numpy(U).float(),
+    )
