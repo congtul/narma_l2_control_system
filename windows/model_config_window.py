@@ -8,7 +8,8 @@ from windows.model_train_window import ModelTrainWindow
 from backend.system_workspace import workspace
 from backend import utils
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import copy
 
 
@@ -83,7 +84,7 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         return all(self._is_valid(w) for w in self.required_edits_no_epoch)
 
     def update_buttons_state(self):
-        self.ui.train_btn.setEnabled(self.all_valid())           # Train
+        self.ui.train_btn.setEnabled(self.all_valid() and self._has_dataset())  # Train
         self.ui.generate_data_btn.setEnabled(self.all_valid_no_epoch())  # Generate Data
         base_ok = all(self._is_valid(w) for w in [
             self.ui.hidden_layers_input,
@@ -91,6 +92,16 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             self.ui.delayed_outputs_input,
         ])
         self.ui.import_weight_btn.setEnabled(base_ok)
+
+    def _has_dataset(self):
+        if not hasattr(workspace, "dataset"):
+            return False
+        ds = workspace.dataset
+        return (
+            isinstance(ds, dict)
+            and all(k in ds for k in ["t", "u", "y"])
+            and any(len(ds[k]) > 0 for k in ["t", "u", "y"])
+        )
 
     # ---------------- Collect parameters ----------------
     def collect_common_parameters(self):
@@ -168,22 +179,11 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             u_hist_list = [u[i]] + u_hist_list[:-1]
             y_hist_list = [y[i]] + y_hist_list[:-1]
 
-        plt.figure(figsize=(10,6))
-
-        plt.subplot(2,1,1)
-        plt.plot(t, u, label="Control signal u(t)")
-        plt.ylabel("u")
-        plt.grid(True)
-
-        plt.subplot(2,1,2)
-        plt.plot(t, y, label="Plant output y(t)", color='orange')
-        plt.xlabel("t (s)")
-        plt.ylabel("y")
-        plt.grid(True)
-
-        plt.tight_layout()
-        plt.show()
-        workspace.dataset = {"t": t, "u": u, "y": y}
+        accepted = self._show_dataset_preview_dialog(t, u, y)
+        if accepted:
+            workspace.dataset = {"t": t, "u": u, "y": y}
+            QtWidgets.QMessageBox.information(self, "Saved", "Dataset accepted.")
+            self.update_buttons_state()
 
     def handle_export_data(self):
         if not hasattr(workspace, "dataset") or workspace.dataset is None:
@@ -236,6 +236,43 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             return
 
         QtWidgets.QMessageBox.information(self, "Loaded", "Dataset loaded successfully.")
+        self.update_buttons_state()
+
+    def _show_dataset_preview_dialog(self, t, u, y):
+        """Show dataset preview with Accept/Reject buttons. Return True if accepted."""
+        dlg = QtWidgets.QDialog(self)
+        dlg.setWindowTitle("Dataset Preview")
+        layout = QtWidgets.QVBoxLayout(dlg)
+        canvas = FigureCanvas(Figure(figsize=(8, 5)))
+        layout.addWidget(canvas)
+
+        fig = canvas.figure
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax2 = fig.add_subplot(2, 1, 2)
+        fig.tight_layout(h_pad=1.0)
+
+        ax1.plot(t, u, label="Control signal u(t)")
+        ax1.set_ylabel("u")
+        ax1.grid(True)
+
+        ax2.plot(t, y, label="Plant output y(t)", color='orange')
+        ax2.set_xlabel("t (s)")
+        ax2.set_ylabel("y")
+        ax2.grid(True)
+
+        btn_layout = QtWidgets.QHBoxLayout()
+        btn_layout.addStretch(1)
+        btn_accept = QtWidgets.QPushButton("Accept dataset")
+        btn_reject = QtWidgets.QPushButton("Reject dataset")
+        btn_layout.addWidget(btn_accept)
+        btn_layout.addWidget(btn_reject)
+        btn_layout.addStretch(1)
+        layout.addLayout(btn_layout)
+
+        btn_accept.clicked.connect(dlg.accept)
+        btn_reject.clicked.connect(dlg.reject)
+
+        return dlg.exec_() == QtWidgets.QDialog.Accepted
 
     def open_network_weight(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -325,6 +362,7 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Invalid input")
             return
         workspace.narma_config = self.collect_train_parameters()
+        QtWidgets.QMessageBox.information(self, "Config Saved", "Config saved to workspace.")
 
     def handle_export_weight(self):
         if not hasattr(workspace, "narma_model") or workspace.narma_model is None:
