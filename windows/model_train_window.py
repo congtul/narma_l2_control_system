@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import queue
 import sys, os
+import threading
 import numpy as np
 from PyQt5 import QtCore, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -11,6 +13,7 @@ from backend.system_workspace import workspace
 from backend import utils
 import torch
 from torch.utils.data import DataLoader
+from backend.training_worker import TrainingWorker
 
 os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
@@ -107,7 +110,18 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
 
         # Tạo cửa sổ plot riêng
         self.plot_win = TrainingPlotWindow(parent=self)
-        self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)        
+
+        # --- Các biến nội bộ ---
+        self.epoch_total = int(epoch_total)
+        self.epoch_count = 0
+        self.demo_history = {"t": [], "inp": [], "plant": [], "err": [], "nn": []}
+
+        # --- Gắn signal ---
+        self.ui.performance_btn.clicked.connect(self._demo_update)
+        self.ui.performance_btn.clicked.connect(self.plot_win.show)
+        self.ui.stop_btn.clicked.connect(self._stop_training)
+        self.ui.cancel_btn.clicked.connect(self.close)
 
         X, Y, U = utils.build_narma_dataset(workspace.dataset["y"], workspace.dataset["u"], ny=workspace.narma_model.ny, nu=workspace.narma_model.nu)   
 
@@ -121,22 +135,38 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
         self.X_test = torch.tensor(X_test, dtype=torch.float32)
         self.Y_test = torch.tensor(Y_test, dtype=torch.float32)
         self.U_test = torch.tensor(U_test, dtype=torch.float32)
-        
-        workspace.narma_model.train_narma(
-            train_ds,
-            val_data=val_data,
+
+        # Tạo QThread worker
+        self.worker = TrainingWorker(
+            controller=workspace.narma_model,
+            train_ds=train_ds,
+            val_ds=val_data
         )
 
-        # --- Các biến nội bộ ---
-        self.epoch_total = int(epoch_total)
-        self.epoch_count = 0
-        self.demo_history = {"t": [], "inp": [], "plant": [], "err": [], "nn": []}
+        # Connect signal vào GUI
+        self.worker.epoch_signal.connect(self._epoch_callback)
+        self.worker.finished_signal.connect(self._training_finished)
 
-        # --- Gắn signal ---
-        self.ui.performance_btn.clicked.connect(self._demo_update)
-        self.ui.performance_btn.clicked.connect(self.plot_win.show)
-        self.ui.stop_btn.clicked.connect(self._stop_training)
-        self.ui.cancel_btn.clicked.connect(self.close)
+        # Start training
+        self.worker.start()
+
+    def _epoch_callback(self, epoch, train_loss, val_loss):
+        # Update progress bar
+        self._set_epoch_count(epoch, self.epoch_total)
+
+        # Update GUI labels (nếu có)
+        self.ui.train_loss_label.setText(f"{train_loss:.6f}")
+        if val_loss is not None:
+            self.ui.val_loss_label.setText(f"{val_loss:.6f}")
+
+    def _training_finished(self, result):
+        if result["status"] == "ok":
+            QtWidgets.QMessageBox.information(self, "Done", "Training completed successfully!")
+        elif result["status"] == "stopped":
+            QtWidgets.QMessageBox.warning(self, "Stopped", "Training was stopped.")
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", result.get("message", "Unknown error"))
+
 
     # --- Các hàm phụ ---
     def _set_epoch_count(self, current: int, total: int = None):
@@ -145,17 +175,9 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
             self.ui.progress_max_label.setText(str(int(total)))
         self.ui.progress_bar.setValue(int(current))
 
-    def _tick(self):
-        if self.epoch_count < self.epoch_total:
-            self.epoch_count += 1
-            self._set_epoch_count(self.epoch_count, self.epoch_total)
-            # Update plots with fresh demo data each tick to show "real-time" change
-            self._demo_update()
-        else:
-            self.demo_timer.stop()
-
     def _stop_training(self):
-        self.demo_timer.stop()
+        if hasattr(self, "worker"):
+            self.worker.stop()
         self._reset_demo_history()
 
     def _demo_update(self):
