@@ -109,7 +109,7 @@ class NARMA_L2_Controller(nn.Module):
         params = list(self.f.parameters()) + list(self.g.parameters())
         optim = torch.optim.Adam(params, lr=self.lr)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optim, factor=0.5, patience=5, verbose=False
+            optim, factor=0.5, patience=5
         )
         loss_fn = nn.MSELoss()
 

@@ -37,54 +37,98 @@ class TrainingWorker(QtCore.QThread):
     # ---------------------------------------------------
 
     def _train_narma(self):
-        model = self.controller.model
-        ny = model.ny
-        nu = model.nu
-        lr = self.controller.lr
-        epochs = self.controller.epochs
-        batch_size = self.controller.batch_size
-
-        optimizer = optim.Adam(model.parameters(), lr=lr)
+        device = (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
+        self.controller.f.to(device)
+        self.controller.g.to(device)
+        train_loader = DataLoader(self.train_ds, batch_size=self.controller.batch_size, shuffle=False)
+        val_loader = DataLoader(self.val_ds, batch_size=self.controller.batch_size, shuffle=False) if self.val_ds else None
+        params = list(self.controller.f.parameters()) + list(self.controller.g.parameters())
+        optim = torch.optim.Adam(params, lr=self.controller.lr)
         loss_fn = nn.MSELoss()
 
-        train_loader = DataLoader(self.train_ds, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(self.val_ds, batch_size=batch_size, shuffle=False) if self.val_ds else None
+        best_val_loss = float("inf")
+        patience_counter = 0
+        best_state = None
 
         history = []
 
-        for epoch in range(1, epochs + 1):
-
+        for epoch in range(1, self.controller.epochs + 1):
+            
             if self.stopped:
                 return {"status": "stopped", "history": history}
 
             # ---------------------- TRAIN ----------------------
-            model.train()
-            train_loss = 0
-            for X, Y, _ in train_loader:
-                optimizer.zero_grad()
-                pred = model(X)
-                loss = loss_fn(pred, Y)
-                loss.backward()
-                optimizer.step()
-                train_loss += loss.item()
+            self.controller.f.train()
+            self.controller.g.train()
+            train_loss_acc = 0.0
+            n_train = 0
 
-            train_loss /= max(1, len(train_loader))
+            for batch in train_loader:
+                # support both (x,y,u) and (x,y)
+                if len(batch) == 3:
+                    x, y_real, u_k = batch
+                else:
+                    x, y_real = batch
+                    # try to extract u from last nu columns of x
+                    u_k = x[:, -self.controller.nu]
+
+                x = x.to(device); y_real = y_real.to(device); u_k = u_k.to(device)
+                
+                optim.zero_grad()
+                y_pred = self.controller.f(x).squeeze() + self.controller.g(x).squeeze() * u_k.squeeze()
+                loss = loss_fn(y_pred, y_real.view_as(y_pred))
+                loss.backward()
+                optim.step()
+
+                batch_n = x.size(0)
+                train_loss_acc += loss.item() * batch_n
+                n_train += batch_n
+
+            train_loss = train_loss_acc / max(1, n_train)
 
             # ---------------------- VAL ----------------------
             val_loss = None
             if val_loader:
-                model.eval()
+                self.controller.f.eval()
+                self.controller.g.eval()
+                val_loss_acc = 0.0
+                n_val = 0
                 with torch.no_grad():
-                    val_loss = 0
-                    for Xv, Yv, _ in val_loader:
-                        pv = model(Xv)
-                        lv = loss_fn(pv, Yv)
-                        val_loss += lv.item()
-                    val_loss /= max(1, len(val_loader))
+                    for batch in val_loader:
+                        if len(batch) == 3:
+                            x, y_real, u_k = batch
+                        else:
+                            x, y_real = batch
+                            u_k = x[:, -self.controller.nu]
+                        x = x.to(device); y_real = y_real.to(device); u_k = u_k.to(device)
+                        y_pred = self.controller.f(x).squeeze() + self.controller.g(x).squeeze() * u_k.squeeze()
+                        loss = loss_fn(y_pred, y_real.view_as(y_pred))
+                        batch_n = x.size(0)
+                        val_loss_acc += loss.item() * batch_n
+                        n_val += batch_n
+                val_loss = val_loss_acc / max(1, n_val)
+
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    patience_counter = 0
+                    best_state = {
+                        "f": {k: v.cpu() for k, v in self.controller.f.state_dict().items()},
+                        "g": {k: v.cpu() for k, v in self.controller.g.state_dict().items()},
+                    }
+                else:
+                    patience_counter += 1
+                    if patience_counter >= self.controller.patience:
+                        print("Early stopping triggered.")
+                        break
 
             history.append((epoch, train_loss, val_loss))
 
             # Emit về GUI
             self.epoch_signal.emit(epoch, train_loss, val_loss)
+
+        # Load best weights if available
+        if best_state is not None:
+            self.controller.f.load_state_dict(best_state["f"])
+            self.controller.g.load_state_dict(best_state["g"])
 
         return {"status": "ok", "history": history}

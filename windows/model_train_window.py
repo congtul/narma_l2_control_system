@@ -154,10 +154,10 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
         # Update progress bar
         self._set_epoch_count(epoch, self.epoch_total)
 
-        # Update GUI labels (nếu có)
-        self.ui.train_loss_label.setText(f"{train_loss:.6f}")
-        if val_loss is not None:
-            self.ui.val_loss_label.setText(f"{val_loss:.6f}")
+        # # Update GUI labels (nếu có)
+        # self.ui.train_loss_label.setText(f"{train_loss:.6f}")
+        # if val_loss is not None:
+        #     self.ui.val_loss_label.setText(f"{val_loss:.6f}")
 
     def _training_finished(self, result):
         if result["status"] == "ok":
