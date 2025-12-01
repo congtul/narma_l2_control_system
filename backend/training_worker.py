@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+import numpy as np
 
 
 class TrainingWorker(QtCore.QThread):
@@ -87,7 +88,7 @@ class TrainingWorker(QtCore.QThread):
             train_loss = train_loss_acc / max(1, n_train)
 
             # ---------------------- VAL ----------------------
-            val_loss = None
+            val_loss = np.nan
             if val_loader:
                 self.controller.f.eval()
                 self.controller.g.eval()

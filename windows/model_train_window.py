@@ -99,6 +99,55 @@ class TrainingPlotWindow(QtWidgets.QMainWindow):
     def update_plots(self, t, inp, plant, err, nn):
         self.model.set_all(t, inp, plant, err, nn)
 
+class LossPlotWindow(QtWidgets.QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Training Loss Curve")
+        self.resize(700, 500)
+
+        self.fig = Figure(tight_layout=True)
+        self.canvas = FigureCanvas(self.fig)
+        self.ax = self.fig.add_subplot(111)
+        self.ax.set_title("Train/Val Loss vs Epoch")
+        self.ax.set_xlabel("Epoch")
+        self.ax.set_ylabel("Loss")
+
+        # 2 line: train + val
+        self.line_train, = self.ax.plot([], [], label="Train Loss")
+        self.line_val, = self.ax.plot([], [], label="Val Loss")
+        self.ax.legend()
+
+        self.epoch_list = []
+        self.train_list = []
+        self.val_list   = []
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self.canvas)
+        w = QtWidgets.QWidget()
+        w.setLayout(layout)
+        self.setCentralWidget(w)
+
+    @QtCore.pyqtSlot(int, float, float)
+    def update_loss(self, epoch, train_loss, val_loss):
+        # append
+        self.epoch_list.append(epoch)
+        self.train_list.append(train_loss)
+
+        # val_loss có thể None
+        if val_loss is not None:
+            self.val_list.append(val_loss)
+        else:
+            self.val_list.append(np.nan)
+
+        # update data
+        self.line_train.set_data(self.epoch_list, self.train_list)
+        self.line_val.set_data(self.epoch_list, self.val_list)
+
+        # autoscale
+        self.ax.relim()
+        self.ax.autoscale_view()
+
+        self.canvas.draw_idle()
 
 # ------------------- Main Window -------------------
 class ModelTrainWindow(QtWidgets.QMainWindow):
@@ -110,7 +159,10 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
 
         # Tạo cửa sổ plot riêng
         self.plot_win = TrainingPlotWindow(parent=self)
-        self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)        
+        self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+
+        self.loss_win = LossPlotWindow(self)
+        self.loss_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
 
         # --- Các biến nội bộ ---
         self.epoch_total = int(epoch_total)
@@ -145,6 +197,7 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
 
         # Connect signal vào GUI
         self.worker.epoch_signal.connect(self._epoch_callback)
+        self.worker.epoch_signal.connect(self.loss_win.update_loss)
         self.worker.finished_signal.connect(self._training_finished)
 
         # Start training
@@ -207,7 +260,7 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
 
         y_pred = []
 
-        # ----- Predict recursive giống code bạn đưa -----
+        # ----- Predict recursive -----
         for k in range(delay, len(Y_test)):
             y_hist_t = torch.tensor(y_hist_seq[-ny:], dtype=torch.float32)
             u_hist_t = torch.tensor(u_hist_seq[-nu:], dtype=torch.float32)
@@ -259,6 +312,9 @@ if __name__ == "__main__":
     workspace.dataset["t"] = data[:, 0]
     workspace.dataset["u"] = data[:, 1]
     workspace.dataset["y"] = data[:, 2]
-    win = ModelTrainWindow()
+    win = ModelTrainWindow(epoch_total=workspace.narma_model.epochs)
     win.show()
+    win.loss_win.show()
+    geo_loss = win.loss_win.geometry()
+    win.loss_win.move(geo_loss.x()+600, geo_loss.y())
     sys.exit(app.exec_())
