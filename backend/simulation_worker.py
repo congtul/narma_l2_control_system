@@ -28,6 +28,7 @@ class SimulationWorker(QObject):
         u_plant_hist = [0] * len(workspace.plant.get("num_disc", [1]))
         y_plant_hist = [0] * (len(workspace.plant.get("den_disc", [1])) - 1)
         while (self.running) and (t <= workspace.run_time):
+            #TODO: tham số tham chiếu có thể thay đổi theo thời gian, port từ workspace
             r = 70
             y_hist_t = torch.tensor(y_hist, dtype=torch.float32)
             u_hist_t = torch.tensor(u_hist, dtype=torch.float32)
