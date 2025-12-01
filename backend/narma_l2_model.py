@@ -27,7 +27,7 @@ class ANN_Model(nn.Module):
 # NARMA-L2 Default Model
 # ---------------------------
 class NARMA_L2_Model:
-    def __init__(self, ny=2, nu=3, hidden=9, default_model=False):
+    def __init__(self, ny=3, nu=4, hidden=9, default_model=False):
 
         self.f = ANN_Model(ny, nu, hidden)
         self.g = ANN_Model(ny, nu, hidden)
