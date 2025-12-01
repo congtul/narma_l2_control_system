@@ -9,6 +9,7 @@ from backend.system_workspace import workspace
 from backend import utils
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 
 class ModelConfigWindow(QtWidgets.QMainWindow):
@@ -57,11 +58,11 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         self.ui.generate_data_btn.clicked.connect(self.run_generate_data)
         self.ui.export_data_btn.clicked.connect(self.handle_export_data)
         self.ui.import_data_btn.clicked.connect(self.handle_import_data)
-        self.ui.cancel_btn.clicked.connect(self.close)
+        self.ui.export_weight_btn.clicked.connect(self.handle_export_weight)
         self.ui.train_btn.clicked.connect(self.run_model_train)
-        self.ui.ok_btn.clicked.connect(self.close)
+        self.ui.save_model_btn.clicked.connect(self.handle_save_model)
         self.ui.default_btn.clicked.connect(self.set_default_parameters)
-        self.ui.save_btn.clicked.connect(self.handle_save)
+        self.ui.save_btn.clicked.connect(self.handle_save_config)
 
     @staticmethod
     def _is_valid(widget):
@@ -130,6 +131,9 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             self.train_win.destroyed.connect(lambda: setattr(self, "train_win", None))
 
         self.train_win.show()
+        self.train_win.loss_win.show()
+        geo_loss = self.train_win.loss_win.geometry()
+        self.train_win.loss_win.move(geo_loss.x()+600, geo_loss.y())
 
     def run_generate_data(self):
         if not self.all_valid_no_epoch():
@@ -316,11 +320,41 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             "g": cfg.get("g", {}),
         }
 
-    def handle_save(self):
+    def handle_save_config(self):
         if not self.all_valid():
             QtWidgets.QMessageBox.warning(self, "Invalid input")
             return
         workspace.narma_config = self.collect_train_parameters()
+
+    def handle_export_weight(self):
+        if not hasattr(workspace, "narma_model") or workspace.narma_model is None:
+            QtWidgets.QMessageBox.warning(self, "No Model", "No trained model available to export.")
+            return
+
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Export Network Weights",
+            "",
+            "PyTorch Files (*.pth)"
+        )
+        if not path:
+            return
+
+        try:
+            torch.save({ "f": workspace.narma_model.f.state_dict(), "g": workspace.narma_model.g.state_dict() }, path)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Export Error", f"Could not export weights:\n{e}")
+            return
+
+        QtWidgets.QMessageBox.information(self, "Exported", "Network weights exported successfully.")
+
+    def handle_save_model(self):
+        if workspace.narma_model is None:
+            QtWidgets.QMessageBox.warning(self, "No Training Session", "No active training session to save model from.")
+            return
+        else:
+            workspace.narma_model = copy.deepcopy(workspace.temp_narma_model)
+            QtWidgets.QMessageBox.information(self, "Model Saved", "Trained model saved to workspace.")
 
     def set_default_parameters(self):
         default_params = workspace.get_default_narma_l2_params()

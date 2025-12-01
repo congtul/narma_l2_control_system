@@ -14,6 +14,7 @@ from backend import utils
 import torch
 from torch.utils.data import DataLoader
 from backend.training_worker import TrainingWorker
+import copy
 
 os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
@@ -188,9 +189,10 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
         self.Y_test = torch.tensor(Y_test, dtype=torch.float32)
         self.U_test = torch.tensor(U_test, dtype=torch.float32)
 
+        workspace.temp_narma_model = copy.deepcopy(workspace.narma_model)
         # Tạo QThread worker
         self.worker = TrainingWorker(
-            controller=workspace.narma_model,
+            controller=workspace.temp_narma_model,
             train_ds=train_ds,
             val_ds=val_data
         )

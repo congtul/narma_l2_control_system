@@ -136,7 +136,7 @@ class SystemWorkspace:
             "ny": 4,
             "hidden_size": 10,
             "activation": "SiLU",
-            "learning_rate": 1e-3,
+            "learning_rate": 1e-4,
             "training_epochs": 200,
             "training_sample_size": 10000,
             "backprop_batch_size": 32,

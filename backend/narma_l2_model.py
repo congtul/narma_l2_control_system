@@ -43,7 +43,7 @@ class NARMA_L2_Model:
 # NARMA-L2 Controller
 # ---------------------------
 class NARMA_L2_Controller(nn.Module):
-    def __init__(self, ny=4, nu=4, hidden=10, epsilon=1e-3, max_control=12.0, min_control=-12.0, max_output=160.0, min_output=-160.0, epochs=200, lr=1e-3, batch_size=32, patience=10, default_model=False):
+    def __init__(self, ny=4, nu=4, hidden=10, epsilon=1e-3, max_control=12.0, min_control=-12.0, max_output=160.0, min_output=-160.0, epochs=200, lr=1e-4, batch_size=32, patience=10, default_model=False):
         super().__init__()
         self.ny, self.nu, self.epsilon = ny, nu, epsilon
         model = NARMA_L2_Model(ny, nu, hidden, default_model)
