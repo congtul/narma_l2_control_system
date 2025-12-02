@@ -5,7 +5,7 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.main_ui import Ui_MainWindow as Ui_Main
 from windows.input_window import InputWindow
-from windows.plant_model_windows import PlantModelWindow, PlantModelDefault
+from windows.plant_model_windows import PlantModelWindow
 from windows.output_graph_windows import OutputGraphWindow
 from windows.user_guide_window import UserGuideWindow
 from windows.model_config_window import ModelConfigWindow
@@ -23,6 +23,10 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
         self._bg_pix = QtGui.QPixmap(".\\resources\\images\\2.jpg")
         self._update_background()
+
+        # Sampling time is provided after login; keep field read-only and show current value
+        self.sampling_time_edit.setReadOnly(True)
+        self.sampling_time_edit.setText(f"{workspace.dt:.6f}")
 
         # Login / Logout state
         self.current_user = None  # {"username": str, "role": "admin|user"}
@@ -137,6 +141,8 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
     # ---------------- Simulation Control ----------------
     def toggle_run(self):
+        if not self._ensure_access():
+            return
         """Toggle giữa Start / Stop"""
         self.running = not self.running
         if self.running:
@@ -225,6 +231,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             if dlg.exec_() == QtWidgets.QDialog.Accepted:
                 username, role = dlg.get_result()
                 self.current_user = {"username": username, "role": role}
+                self._prompt_sampling_time()
                 QtWidgets.QMessageBox.information(self, "Logged in", f"Welcome {username} ({role}).")
         self.update_login_button()
 
@@ -256,6 +263,37 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             )
             self.main_label.setScaledContents(False)
             self.main_label.setPixmap(scaled)
+
+    def _prompt_sampling_time(self):
+        """Ask user for sampling time right after login and save to workspace."""
+        current_value = workspace.dt
+        while True:
+            val, ok = QtWidgets.QInputDialog.getDouble(
+                self,
+                "Sampling time",
+                "Enter sampling time (s) between 0.001 and 0.02:",
+                value=current_value,
+                min=0.001,
+                max=0.02,
+                decimals=6,
+            )
+            if not ok:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Sampling time unchanged",
+                    f"Keeping current sampling time: {workspace.dt:.6f} s.",
+                )
+                return False
+
+            try:
+                workspace.set_sampling_time(val)
+            except ValueError as e:
+                QtWidgets.QMessageBox.warning(self, "Invalid sampling time", str(e))
+                current_value = val
+                continue
+
+            self.sampling_time_edit.setText(f"{workspace.dt:.6f}")
+            return True
 
 
 # ---------------- Main ----------------

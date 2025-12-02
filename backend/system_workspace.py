@@ -120,7 +120,7 @@ class SystemWorkspace:
         return num, den
     
     def get_default_sampling_time(self):
-        return 0.01
+        return 0
     
     def get_default_runtime(self):
         return 10
@@ -170,6 +170,18 @@ class SystemWorkspace:
             patience=config["patience"],
             default_model=True
         )
+
+    # ---------------- Sampling time helpers ----------------
+    def set_sampling_time(self, dt: float):
+        """
+        Valid range: [0.001, 0.02] seconds.
+        """
+        if dt < 0.001 or dt > 0.02:
+            raise ValueError("Sampling time must be within [0.001, 0.02] seconds.")
+
+        self.dt = float(dt)
+        # self.simulation["step_ms"] = max(1, int(self.dt * 1000))
+        print(f"[INFO] Sampling time updated to {self.dt} s")
 
 # ---------------- Singleton instance ----------------
 workspace = SystemWorkspace()
