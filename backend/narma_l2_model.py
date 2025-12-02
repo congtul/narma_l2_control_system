@@ -43,7 +43,7 @@ class NARMA_L2_Model:
 # NARMA-L2 Controller
 # ---------------------------
 class NARMA_L2_Controller(nn.Module):
-    def __init__(self, ny=4, nu=4, hidden=10, epsilon=1e-3, max_control=12.0, min_control=-12.0, max_output=160.0, min_output=-160.0, epochs=200, lr=1e-4, batch_size=32, patience=10, default_model=False):
+    def __init__(self, ny=4, nu=4, hidden=10, epsilon=1e-3, max_control=12.0, min_control=-12.0, max_output=160.0, min_output=-160.0, epochs=200, lr=1e-4, batch_size=32, patience=10, default_model=False, device=None):
         super().__init__()
         self.ny, self.nu, self.epsilon = ny, nu, epsilon
         model = NARMA_L2_Model(ny, nu, hidden, default_model)
@@ -56,6 +56,9 @@ class NARMA_L2_Controller(nn.Module):
         self.lr = lr
         self.batch_size = batch_size
         self.patience = patience
+        self.device = device or (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
+        self.f.to(self.device)
+        self.g.to(self.device)
 
     def compute_control(self, y_hist, u_hist, y_ref_future):
         # y_hist, u_hist: 1D tensors length ny and nu
@@ -69,8 +72,6 @@ class NARMA_L2_Controller(nn.Module):
     
     def narma_forward(self, x_history, u_k, device=None):
         # x_history: either 1D or 2D (batch, features)
-        device = device or (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
-        self.f.to(device); self.g.to(device)
         if x_history.dim() == 1:
             x_history = x_history.view(1, -1)
         x_history = x_history.to(device)
@@ -95,8 +96,6 @@ class NARMA_L2_Controller(nn.Module):
         """
         device = device or (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
         # move models once
-        self.f.to(device)
-        self.g.to(device)
 
         # Ensure train_ds yields u directly: if not, expect train_ds to be (x,y) and user passed u externally.
         # We'll support the common case where train_ds is (x,y,u)
@@ -245,8 +244,6 @@ if __name__ == "__main__":
 
     default_controller.train_narma(train_ds, val_data=val_ds, use_amp=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    default_controller.f.to(device)
-    default_controller.g.to(device)
 
     print("\nEvaluating on Test Dataset...")
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False)

@@ -46,7 +46,7 @@ class SimulationWorker(QObject):
         y = 0
         while (self.running) and (t <= workspace.run_time):
             # reference at current step and next step
-            r = 100*np.sin(3*t)               # r(k)
+            r = 100*np.sin(5*t)               # r(k)
 
             T = workspace.run_time
             # # profile 1
@@ -82,29 +82,29 @@ class SimulationWorker(QObject):
             #     r = 0
 
             # profile 3
-            if t < 0.1*T:
-                r = 0
-            elif t < 0.2*T:
-                r = 50
-            elif t < 0.35*T:
-                r = 120
-            elif t < 0.50*T:
-                r = -60
-            elif t < 0.65*T:
-                r = 80
-            elif t < 0.80*T:
-                r = -120
-            elif t < 0.9*T:
-                r = 40
-            else:
-                r = 0
+            # if t < 0.1*T:
+            #     r = 0
+            # elif t < 0.2*T:
+            #     r = 50
+            # elif t < 0.35*T:
+            #     r = 120
+            # elif t < 0.50*T:
+            #     r = -60
+            # elif t < 0.65*T:
+            #     r = 80
+            # elif t < 0.80*T:
+            #     r = -120
+            # elif t < 0.9*T:
+            #     r = 40
+            # else:
+            #     r = 0
 
             y_hist_t = torch.tensor(y_hist, dtype=torch.float32)
             u_hist_t = torch.tensor(u_hist, dtype=torch.float32)
 
             u = workspace.narma_model.compute_control(y_hist_t, u_hist_t, r)
             # low pass filter for narma control
-            low_pass_coef = 0.95
+            low_pass_coef = 1
             u = (1-low_pass_coef)*u_hist[0] + low_pass_coef*u
                 
             # --- debug override u here ---

@@ -259,6 +259,8 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
 if __name__ == "__main__":
     from PyQt5.QtCore import QThread
     from backend.simulation_worker import SimulationWorker
+    from backend.online_training_worker import OnlineTrainingWorker
+    import torch
     app = QtWidgets.QApplication(sys.argv)
 
     # --- Tạo cửa sổ đồ thị ---
@@ -267,19 +269,32 @@ if __name__ == "__main__":
 
     # --- Tạo worker + thread ---
     thread = QThread()
+    online_thread = QThread()
     worker = SimulationWorker()
+    from backend.system_workspace import workspace
+    online_worker = OnlineTrainingWorker(model=workspace.narma_model)
 
     worker.moveToThread(thread)
+    online_worker.moveToThread(online_thread)
 
+    yk_1 = 0
+    train_online = True
     # ====== NỐI SIGNAL TỚI GRAPH WINDOW ======
     def on_data_ready(t, r, y, y_pred, u):
-        w.append_data(t, r, y, y_pred, u)
+        global yk_1
+        w.append_data(t, r, y, y_pred, u) 
+
+        if train_online:
+            # push sample to online training worker
+            online_worker.push_sample(yk_1, u, y)
+            yk_1 = y
 
     worker.data_ready.connect(on_data_ready)
     worker.finished.connect(thread.quit)
 
     # ====== Start worker khi thread bắt đầu ======
     thread.started.connect(worker.run)
+    online_thread.started.connect(online_worker.run)
 
     # ====== Khi đóng cửa sổ thì stop worker ======
     def on_close():
@@ -287,11 +302,17 @@ if __name__ == "__main__":
         thread.quit()
         thread.wait()
 
+        online_worker.stop()
+        online_thread.quit()
+        online_thread.wait()
+
     w.destroyed.connect(on_close)
 
     # ====== Start thread ======
     thread.start()
     print("Simulation started.")
+    online_thread.start()
+    print("Online training started.")
 
     sys.exit(app.exec_())
 
