@@ -1,3 +1,4 @@
+import profile
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
@@ -48,7 +49,7 @@ class SimulationWorker(QObject):
             r = 100*np.sin(3*t)               # r(k)
 
             T = workspace.run_time
-            # profile 1
+            # # profile 1
             # if t < 0.1 * T:
             #     r = 50
             # elif t < 0.2 * T:
@@ -81,22 +82,22 @@ class SimulationWorker(QObject):
             #     r = 0
 
             # profile 3
-            # if t < 0.1*T:
-            #     r = 0
-            # elif t < 0.2*T:
-            #     r = 50
-            # elif t < 0.35*T:
-            #     r = 120
-            # elif t < 0.50*T:
-            #     r = -60
-            # elif t < 0.65*T:
-            #     r = 80
-            # elif t < 0.80*T:
-            #     r = -120
-            # elif t < 0.9*T:
-            #     r = 40
-            # else:
-            #     r = 0
+            if t < 0.1*T:
+                r = 0
+            elif t < 0.2*T:
+                r = 50
+            elif t < 0.35*T:
+                r = 120
+            elif t < 0.50*T:
+                r = -60
+            elif t < 0.65*T:
+                r = 80
+            elif t < 0.80*T:
+                r = -120
+            elif t < 0.9*T:
+                r = 40
+            else:
+                r = 0
 
             y_hist_t = torch.tensor(y_hist, dtype=torch.float32)
             u_hist_t = torch.tensor(u_hist, dtype=torch.float32)

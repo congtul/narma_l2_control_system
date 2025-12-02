@@ -44,50 +44,34 @@ def generate_motor_data(time_end=15):
 
 
 # ===================== 2. Hàm hỗ trợ tính metrics =====================
-def compute_step_metrics(t, ref, y):
-    """Tính rise time, settling time, overshoot dựa trên dữ liệu"""
-    if len(y) < 2:
-        return np.nan, np.nan, np.nan
+def compute_tracking_metrics(ref, y, u):
+    """General-purpose tracking metrics + control signal metrics"""
+    ref = np.array(ref)
+    y = np.array(y)
+    u = np.array(u)
 
-    steady_state = ref[-1]
-    y_final = y[-1]
-    y_max = np.max(y)
+    e = ref - y
 
-    # overshoot %
-    overshoot = 0
-    if steady_state != 0:
-        overshoot = ((y_max - steady_state) / abs(steady_state)) * 100
+    RMSE = np.sqrt(np.mean(e**2))
+    MAE = np.mean(np.abs(e))
+    steady_err = np.abs(e[-1])
 
-    # rise time (tại 10%–90% giá trị steady)
-    try:
-        y10 = 0.1 * steady_state
-        y90 = 0.9 * steady_state
-        t10 = t[np.where(y >= y10)[0][0]] if np.any(y >= y10) else np.nan
-        t90 = t[np.where(y >= y90)[0][0]] if np.any(y >= y90) else np.nan
-        rise_time = t90 - t10 if np.isfinite(t10) and np.isfinite(t90) else np.nan
-    except Exception:
-        rise_time = np.nan
+    # Control signal metrics
+    mean_abs_u = np.mean(np.abs(u))
+    rms_u = np.sqrt(np.mean(u**2))
 
-    # settling time (±2%)
-    try:
-        tol = 0.02 * abs(steady_state)
-        idx = np.where(np.abs(y - steady_state) > tol)[0]
-        settling_time = t[idx[-1]] if len(idx) > 0 else 0
-    except Exception:
-        settling_time = np.nan
+    return RMSE, MAE, steady_err, mean_abs_u, rms_u
 
-    return rise_time, settling_time, overshoot
+def compute_prediction_metrics(y, y_pred):
+    y = np.array(y)
+    y_pred = np.array(y_pred)
+    e = y - y_pred
+    
+    RMSE = np.sqrt(np.mean(e**2))
+    MAE = np.mean(np.abs(e))
+    bias = np.mean(e)
+    corr = np.corrcoef(y, y_pred)[0, 1] if np.std(y_pred) > 1e-8 else np.nan
 
-
-def compute_error_metrics(ref, y, y_pred):
-    """Tính RMSE, MAE, corr, bias"""
-    if len(y) < 2:
-        return np.nan, np.nan, np.nan, np.nan
-    err_pred = y - y_pred
-    RMSE = np.sqrt(np.mean(err_pred**2))
-    MAE = np.mean(np.abs(err_pred))
-    bias = np.mean(err_pred)
-    corr = np.corrcoef(y, y_pred)[0, 1] if np.std(y_pred) > 0 else np.nan
     return RMSE, MAE, corr, bias
 
 
@@ -103,6 +87,18 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_graph)
         self.timer.start(50)  # update mỗi 50ms
+
+        self.n = 0
+        self.sum_e2 = 0.0
+        self.sum_abs_e = 0.0
+
+        self.sum_abs_u = 0.0
+        self.sum_u2 = 0.0
+
+        # prediction metrics
+        self.sum_ep2 = 0.0
+        self.sum_abs_ep = 0.0
+        self.sum_bias = 0.0
 
         # để tránh vẽ liên tục quá nhanh
         self.last_draw_len = 0
@@ -136,28 +132,61 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
         self.data_y.clear()
         self.data_pred.clear()
         self.data_u.clear()
+
         self.curve_ref.clear()
         self.curve_out.clear()
         self.curve_pred.clear()
         self.curve_real.clear()
+
         self.last_draw_len = 0
+
+        # RESET METRICS
+        self.n = 0
+        self.sum_e2 = 0.0
+        self.sum_abs_e = 0.0
+
+        self.sum_abs_u = 0.0
+        self.sum_u2 = 0.0
+
+        self.sum_ep2 = 0.0
+        self.sum_abs_ep = 0.0
+        self.sum_bias = 0.0
+
         self.update_graph(restart=True)
 
-    # ===== thêm hàm này =====
     def append_data(self, t, r, y, y_pred, u):
-        """Nhận thêm 1 hoặc nhiều điểm dữ liệu"""
-        if isinstance(t, (list, np.ndarray)):
-            self.data_t.extend(t)
-            self.data_ref.extend(r)
-            self.data_y.extend(y)
-            self.data_pred.extend(y_pred)
-            self.data_u.extend(u)
-        else:
-            self.data_t.append(t)
-            self.data_ref.append(r)
-            self.data_y.append(y)
-            self.data_pred.append(y_pred)
-            self.data_u.append(u)
+        t = np.atleast_1d(t)
+        r = np.atleast_1d(r)
+        y = np.atleast_1d(y)
+        y_pred = np.atleast_1d(y_pred)
+        u = np.atleast_1d(u)
+
+        # store for plotting
+        self.data_t.extend(t)
+        self.data_ref.extend(r)
+        self.data_y.extend(y)
+        self.data_pred.extend(y_pred)
+        self.data_u.extend(u)
+
+        # incremental update
+        e = r - y
+        ep = y - y_pred
+
+        m = len(e)
+        self.n += m
+
+        # tracking error accumulators
+        self.sum_e2 += np.sum(e * e)
+        self.sum_abs_e += np.sum(np.abs(e))
+
+        # control effort accumulators
+        self.sum_abs_u += np.sum(np.abs(u))
+        self.sum_u2 += np.sum(u * u)
+
+        # prediction error accumulators
+        self.sum_ep2 += np.sum(ep * ep)
+        self.sum_abs_ep += np.sum(np.abs(ep))
+        self.sum_bias += np.sum(ep)
 
     def update_graph(self, restart=False):
         n = len(self.data_t)
@@ -172,24 +201,30 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
         self.last_draw_len = n
 
         # cập nhật metrics
-        t = np.array(self.data_t)
-        r = np.array(self.data_ref)
-        y = np.array(self.data_y)
-        y_pred = np.array(self.data_pred)
-        u = np.array(self.data_u)
+        if self.n > 0:
+            RMSE_track = np.sqrt(self.sum_e2 / self.n)
+            MAE_track = self.sum_abs_e / self.n
+            mean_abs_u_track = self.sum_abs_u / self.n
+            rms_u_track = np.sqrt(self.sum_u2 / self.n)
+            steady_err_track = abs(self.data_ref[-1] - self.data_y[-1])
 
-        rt, st, os = compute_step_metrics(t, r, y)
-        RMSE, MAE, corr, bias = compute_error_metrics(r, y, y_pred)
-        err = abs(r[-1] - y[-1]) if len(r) > 0 else np.nan
+            RMSE_pred = np.sqrt(self.sum_ep2 / self.n)
+            MAE_pred = self.sum_abs_ep / self.n
+            bias = self.sum_bias / self.n
+
+            # corr: compute full, very cheap
+            y = np.array(self.data_y)
+            yp = np.array(self.data_pred)
+            corr = np.corrcoef(y, yp)[0, 1] if len(y) > 2 else np.nan
 
         # cập nhật text
-        self.m_rise_time.setText(f"{rt:.3f}" if not np.isnan(rt) else "-")
-        self.m_settlle_time.setText(f"{st:.3f}" if not np.isnan(st) else "-")
-        self.m_overshoot.setText(f"{os:.2f}" if not np.isnan(os) else "-")
-        self.m_control_err.setText(f"{err:.3f}" if not np.isnan(err) else "-")
-        self.m_control_input.setText(f"{u[-1]:.3f}" if len(u) > 0 else "-")
-        self.RMSE.setText(f"{RMSE:.4f}")
-        self.MAE.setText(f"{MAE:.4f}")
+        self.RMSE_track.setText(f"{RMSE_track:.3f}" if not np.isnan(RMSE_track) else "-")
+        self.MAE_track.setText(f"{MAE_track:.3f}" if not np.isnan(MAE_track) else "-")
+        self.steady_err_track.setText(f"{steady_err_track:.3f}" if not np.isnan(steady_err_track) else "-")
+        self.mean_abs_u_track.setText(f"{mean_abs_u_track:.3f}" if not np.isnan(mean_abs_u_track) else "-")
+        self.rms_u_track.setText(f"{rms_u_track:.3f}" if not np.isnan(rms_u_track) else "-")
+        self.RMSE_pred.setText(f"{RMSE_pred:.4f}")
+        self.MAE_pred.setText(f"{MAE_pred:.4f}")
         self.corr.setText(f"{corr:.3f}" if not np.isnan(corr) else "-")
         self.bias.setText(f"{bias:.4f}")
 

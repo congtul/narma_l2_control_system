@@ -149,12 +149,12 @@ border: 2px dashed #AAAAAA;
        </font>
       </property>
       <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Mean rise time (s)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;RMSE (rad/s)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
      </widget>
     </item>
     <item alignment="Qt::AlignLeft">
-     <widget class="QLineEdit" name="m_rise_time">
+     <widget class="QLineEdit" name="RMSE_track">
       <property name="readOnly">
        <bool>true</bool>
       </property>
@@ -169,12 +169,12 @@ border: 2px dashed #AAAAAA;
        </font>
       </property>
       <property name="text">
-       <string>Mean settling time (s)</string>
+       <string>MAE (rad/s)</string>
       </property>
      </widget>
     </item>
     <item alignment="Qt::AlignLeft">
-     <widget class="QLineEdit" name="m_settlle_time">
+     <widget class="QLineEdit" name="MAE_track">
       <property name="readOnly">
        <bool>true</bool>
       </property>
@@ -189,12 +189,12 @@ border: 2px dashed #AAAAAA;
        </font>
       </property>
       <property name="text">
-       <string>Mean overshoot      (%)</string>
+       <string>Steady error (rad/s)</string>
       </property>
      </widget>
     </item>
     <item alignment="Qt::AlignLeft">
-     <widget class="QLineEdit" name="m_overshoot">
+     <widget class="QLineEdit" name="steady_err_track">
       <property name="readOnly">
        <bool>true</bool>
       </property>
@@ -209,12 +209,12 @@ border: 2px dashed #AAAAAA;
        </font>
       </property>
       <property name="text">
-       <string>Mean control-error (rad/s)</string>
+       <string>Mean abs control input (Voltage)</string>
       </property>
      </widget>
     </item>
     <item alignment="Qt::AlignLeft">
-     <widget class="QLineEdit" name="m_control_err">
+     <widget class="QLineEdit" name="mean_abs_u_track">
       <property name="readOnly">
        <bool>true</bool>
       </property>
@@ -229,12 +229,12 @@ border: 2px dashed #AAAAAA;
        </font>
       </property>
       <property name="text">
-       <string>Mean control input (Voltage)</string>
+       <string>RMS control input (Voltage)</string>
       </property>
      </widget>
     </item>
     <item alignment="Qt::AlignLeft">
-     <widget class="QLineEdit" name="m_control_input">
+     <widget class="QLineEdit" name="rms_u_track">
       <property name="readOnly">
        <bool>true</bool>
       </property>
@@ -266,7 +266,7 @@ border: 2px dashed #AAAAAA;
      </widget>
     </item>
     <item alignment="Qt::AlignLeft">
-     <widget class="QLineEdit" name="RMSE">
+     <widget class="QLineEdit" name="RMSE_pred">
       <property name="readOnly">
        <bool>true</bool>
       </property>
@@ -286,7 +286,7 @@ border: 2px dashed #AAAAAA;
      </widget>
     </item>
     <item alignment="Qt::AlignLeft">
-     <widget class="QLineEdit" name="MAE">
+     <widget class="QLineEdit" name="MAE_pred">
       <property name="readOnly">
        <bool>true</bool>
       </property>
