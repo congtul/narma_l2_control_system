@@ -28,6 +28,7 @@ class SystemWorkspace:
             "y": [],
         }
         self.training_online = True
+        self.online_training_config = {}
 
         # ---------------- Reference signal ----------------
         self.reference = {

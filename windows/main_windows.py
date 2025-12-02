@@ -9,6 +9,7 @@ from windows.plant_model_windows import PlantModelWindow
 from windows.output_graph_windows import OutputGraphWindow
 from windows.user_guide_window import UserGuideWindow
 from windows.model_config_window import ModelConfigWindow
+from windows.online_training_config_window import OnlineTrainingConfigDialog
 from backend.simulation_worker import SimulationWorker
 from windows.login_window import LoginDialog
 from backend.system_workspace import workspace
@@ -143,6 +144,15 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
     def toggle_run(self):
         if not self._ensure_access():
             return
+        if not self.running:
+            cfg_dialog = OnlineTrainingConfigDialog(self)
+            result = cfg_dialog.exec_()
+            if result != QtWidgets.QDialog.Accepted:
+                return
+            cfg = cfg_dialog.get_config()
+            workspace.training_online = cfg.pop("training_online")
+            workspace.online_training_config = cfg
+            print(workspace.training_online, workspace.online_training_config)
         """Toggle giữa Start / Stop"""
         self.running = not self.running
         if self.running:
