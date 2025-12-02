@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.model_config_ui import Ui_MainWindow  # UI generated from Qt Designer
 from windows.model_train_window import ModelTrainWindow
 from backend.system_workspace import workspace
+from backend.narma_l2_model import NARMA_L2_Controller
 from backend import utils
 import numpy as np
 from matplotlib.figure import Figure
@@ -361,8 +362,28 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         if not self.all_valid():
             QtWidgets.QMessageBox.warning(self, "Invalid input")
             return
-        workspace.narma_config = self.collect_train_parameters()
-        QtWidgets.QMessageBox.information(self, "Config Saved", "Config saved to workspace.")
+        cfg = self.collect_train_parameters()
+        workspace.narma_config = cfg
+
+        try:
+            # Create a new NARMA-L2 controller based on the saved config
+            model = NARMA_L2_Controller(
+                ny=cfg["delay_out"],
+                nu=cfg["delay_in"],
+                hidden=cfg["hidden"],
+                max_control=cfg["max_in_l"],
+                min_control=cfg["min_in_l"],
+                max_output=cfg["min_in_r"],
+                min_output=cfg["max_in_r"],
+                epochs=cfg.get("epochs", 200),
+                lr=cfg.get("learning_rate", 1e-4),
+                default_model=False,
+            )
+            workspace.narma_model = model
+            workspace.temp_narma_model = copy.deepcopy(model)
+            QtWidgets.QMessageBox.information(self, "Config Saved", "Config saved and new NARMA model created.")
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Could not create NARMA model:\n{e}")
 
     def handle_export_weight(self):
         if not hasattr(workspace, "narma_model") or workspace.narma_model is None:
