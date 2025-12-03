@@ -44,6 +44,18 @@ class SimulationWorker(QObject):
         return u, integral_error, error
 
     def run(self):
+        ref = getattr(workspace, "reference", {})
+        if (
+            not isinstance(ref, dict)
+            or "t" not in ref
+            or "ref" not in ref
+            or len(ref.get("t", [])) == 0
+            or len(ref.get("ref", [])) == 0
+        ):
+            print("[WARN] Reference signal is missing; simulation aborted. Please create input in the Input window.")
+            self.finished.emit()
+            return
+
         while (self.running) and (self.t <= workspace.run_time):
             # reference at current step and next step
             # r = 100*np.sin(5*self.t)

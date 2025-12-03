@@ -203,6 +203,22 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
     def start_simulation(self):
         """Bắt đầu giả lập dữ liệu real-time cho OutputGraphWindow"""
+        ref = getattr(workspace, "reference", {})
+        if (
+            not isinstance(ref, dict)
+            or "t" not in ref
+            or "ref" not in ref
+            or len(ref.get("t", [])) == 0
+            or len(ref.get("ref", [])) == 0
+        ):
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Missing reference input",
+                "Please create reference signal before starting the simulation."
+            )
+            self.running = False
+            self.update_run_button()
+            return
         # Lấy thời gian chạy từ QLineEdit
         try:
             run_time = float(self.Run_time_input.text())
