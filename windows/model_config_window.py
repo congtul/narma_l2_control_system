@@ -302,10 +302,13 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             self,
             "Select Network Weight File",
             "",
-            "JSON Files (*.json)"
+            "JSON Files (*.pth)"
         )
         if not path:
             return
+        
+        utils.load_weights_from_file(workspace.narma_model, path)
+        return
         try:
             with open(path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
