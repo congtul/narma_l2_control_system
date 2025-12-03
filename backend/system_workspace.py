@@ -39,6 +39,7 @@ class SystemWorkspace:
             "buffer": deque(maxlen=10000)  # generated signal
         }
         self.num_steps_random = 5  # for random reference
+        self.first_save_advance = False
 
         # ---------------- Runtime simulation buffers ----------------
         self.simulation = {

@@ -25,6 +25,8 @@ class AdvanceModeWindow(QtWidgets.QMainWindow, Ui_Advance):
 
         self.Status_import_label.setText("Enter your generator(t) code")
         self.Status_import_label.setStyleSheet("color: gray; font-style: italic;")
+        if workspace.first_save_advance:
+            self.GeneratorText.setPlainText(workspace.reference.get('advance_code'))
 
     # ============================================================
     # APPLY LOGIC (MAIN)
@@ -56,6 +58,8 @@ class AdvanceModeWindow(QtWidgets.QMainWindow, Ui_Advance):
 
         self.Status_import_label.setText("Generator applied successfully")
         self.Status_import_label.setStyleSheet("color: blue; font-weight: bold;")
+        workspace.first_save_advance = True
+        workspace.reference['advance_code'] = str(self.GeneratorText.toPlainText())
 
     # ============================================================
     # VALIDATE PYTHON STRING AS GENERATOR(t)
