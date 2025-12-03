@@ -152,7 +152,7 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
         if not self.validate_inputs():
             self.Apply_normalmode_btn.setEnabled(False)
             return
-        t_max = 10  # Thời gian tối đa để hiển thị graph, có thể tối ưu sau
+        t_max = workspace.run_time  # Thời gian tối đa để hiển thị graph, có thể tối ưu sau
         t = np.linspace(0, t_max, 1000)
 
         if self.active_mode == "random":
@@ -166,7 +166,7 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
 
             # Parameters
             num_steps = workspace.num_steps_random
-            t_max = 10
+            # t_max = 10
             t = np.linspace(0, t_max, 1000)
             step_len = len(t) // num_steps
 
@@ -199,7 +199,7 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
             }
 
             if step_time:
-                t_max = workspace.run_time
+                # t_max = workspace.run_time
                 t = np.linspace(0, t_max, 1000)
             ref = np.zeros_like(t)
             for i in range(len(step_time)-1):

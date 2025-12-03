@@ -84,6 +84,7 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.Restart_btn.setIcon(QtGui.QIcon(".\\resources\\images\\restart_button.png"))
         self.Run_btn.setIconSize(QtCore.QSize(50, 50))
         self.Restart_btn.setIconSize(QtCore.QSize(50, 50))
+        self.Run_time_set_btn.clicked.connect(self._apply_run_time)
 
         self.update_run_button()
         self.update_login_button()
@@ -355,6 +356,18 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             )
             self.main_label.setScaledContents(False)
             self.main_label.setPixmap(scaled)
+
+    def _apply_run_time(self):
+        """Apply run time from the input box to workspace."""
+        try:
+            run_time = float(self.Run_time_input.text())
+            if run_time <= 0:
+                raise ValueError
+        except ValueError:
+            QtWidgets.QMessageBox.warning(self, "Invalid run time", "Run time must be a positive number.")
+            return
+        workspace.run_time = run_time
+        QtWidgets.QMessageBox.information(self, "Run time updated", f"Simulation run time set to {workspace.run_time:.2f} s.")
 
     def _prompt_sampling_time(self):
         """Ask user for sampling time right after login and save to workspace."""
