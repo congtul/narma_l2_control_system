@@ -1,6 +1,6 @@
 # windows/plant_model_window.py
 
-from PyQt5.QtWidgets import QDialog, QApplication, QMessageBox
+from PyQt5.QtWidgets import QDialog, QApplication, QMessageBox, QWidget
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 import os, sys
@@ -56,6 +56,12 @@ class PlantModelWindow(QDialog):
         self.ui.apply_button.clicked.connect(self.handle_apply)
         self.ui.save_button.clicked.connect(self.handle_save)
         self.ui.close_button.clicked.connect(self.close)
+
+        self.original_label_size = self.ui.label.size()
+        self.original_label2_size = self.ui.label_2.size()
+        self.scale_to_screen()
+        self.ui.label.setFixedSize(self.original_label_size)
+        self.ui.label_2.setFixedSize(self.original_label2_size)
 
     # ---------------- Helpers ----------------
     def parse_coeff_list(self, text):
@@ -172,6 +178,39 @@ class PlantModelWindow(QDialog):
         self.ui.dc_motor_box.setDisabled(is_checked)
         self.ui.default_box.setDisabled(is_checked)
         self.ui.custom_mode_box.setDisabled(not is_checked)
+
+    def scale_to_screen(self):
+        """Shrink the whole UI so it fits in the available screen area."""
+        screen = QApplication.primaryScreen()
+        avail = screen.availableGeometry()
+        w0, h0 = self.width(), self.height()
+
+        # how much we need to shrink to fit width/height
+        fw = avail.width()  / w0
+        fh = avail.height() / h0
+        factor = min(fw, fh, 1.0)   # only shrink, never enlarge
+
+        if factor >= 1.0:
+            return  # already fits
+
+        # resize top-level window
+        self.resize(int(w0 * factor), int(h0 * factor))
+
+        # scale every child widget's geometry and font
+        for w in self.findChildren(QWidget):
+            g = w.geometry()
+            w.setGeometry(
+                int(g.x() * factor),
+                int(g.y() * factor),
+                int(g.width() * factor),
+                int(g.height() * factor),
+            )
+
+            f = w.font()
+            ps = f.pointSize()
+            if ps > 0:
+                f.setPointSize(max(6, int(ps * factor)))  # don’t go too tiny
+                w.setFont(f)
 
 
 # ---------------- Main ----------------

@@ -136,11 +136,15 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.model_config_window.show()
 
     def closeEvent(self, event):
-        for w in self.findChildren(QWidget):
+        for w in list(self.findChildren(QWidget)):
             try:
                 w.close()
-            except:
+            except Exception:
                 pass
+        try:
+            self.output_window.close()
+        except Exception:
+            pass
         event.accept()
 
     # ---------------- Simulation Control ----------------
