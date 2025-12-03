@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import copy
+from backend.system_workspace import workspace
 
 
 class ModelConfigWindow(QtWidgets.QMainWindow):
@@ -38,6 +39,22 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
 
         # Placeholder for child window
         self.train_win = None
+        if workspace.first_save_config:
+            self.ui.delayed_inputs_input.setText(str(workspace.narma_config.get("nu")))
+            self.ui.delayed_outputs_input.setText(str(workspace.narma_config.get("ny")))
+            self.ui.hidden_layers_input.setText(str(workspace.narma_config.get("hidden_size")))
+            self.ui.training_epochs_input.setText(str(workspace.narma_config.get("training_epochs")))
+            self.ui.training_samples_input.setText(str(workspace.narma_config.get("training_sample_size")))
+            self.ui.max_plant_input.setText(str(workspace.narma_config.get("max_control")))
+            self.ui.min_plant_input.setText(str(workspace.narma_config.get("min_control")))
+            self.ui.max_plant_output.setText(str(workspace.narma_config.get("max_output")))
+            self.ui.min_plant_output.setText(str(workspace.narma_config.get("min_output")))
+            self.ui.min_interval_input.setText(str(workspace.narma_config.get("min_interval")))
+            self.ui.max_interval_input.setText(str(workspace.narma_config.get("max_interval")))
+            self.ui.use_validation_checkbox.setChecked(workspace.narma_config.get("use_validation"))
+            self.ui.use_test_checkbox.setChecked(workspace.narma_config.get("use_test_data"))
+            self.ui.train_btn.setEnabled(True)
+
 
     # ---------------- Validators ----------------
     def _setup_validators(self):
@@ -108,23 +125,28 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
     def collect_common_parameters(self):
         ui = self.ui
         return {
-            "hidden": int(ui.hidden_layers_input.text()),
-            "delay_in": int(ui.delayed_inputs_input.text()),
-            "delay_out": int(ui.delayed_outputs_input.text()),
-            "train_samples": int(ui.training_samples_input.text()),
-            "max_in_l": float(ui.max_plant_input.text()),
-            "min_in_l": float(ui.min_plant_input.text()),
-            "max_int_l": float(ui.min_interval_input.text()),
-            "min_in_r": float(ui.max_plant_output.text()),
-            "max_in_r": float(ui.min_plant_output.text()),
-            "min_int_r": float(ui.max_interval_input.text()),
-            "use_val": ui.use_validation_checkbox.isChecked(),
-            "use_test": ui.use_test_checkbox.isChecked(),
+            "nu": int(ui.delayed_inputs_input.text()),
+            "ny": int(ui.delayed_outputs_input.text()),
+            "hidden_size": int(ui.hidden_layers_input.text()),
+            "activation": "SiLU",
+            "learning_rate": 1e-4,
+            "training_epochs": int(ui.training_epochs_input.text()),
+            "training_sample_size": int(ui.training_samples_input.text()),
+            "backprop_batch_size": 32,
+            "max_control": float(ui.max_plant_input.text()), # voltage giới hạn
+            "min_control": float(ui.min_plant_input.text()),
+            "max_output": float(ui.max_plant_output.text()), # tốc độ giới hạn (rad/s)
+            "min_output": float(ui.min_plant_output.text()), # tốc độ giới hạn (rad/s)
+            "min_interval": float(ui.min_interval_input.text()),
+            "max_interval": float(ui.max_interval_input.text()),
+            "sampling_time": workspace.dt,
+            "patience": 10,
+            "use_validation": ui.use_validation_checkbox.isChecked(),
+            "use_test_data": ui.use_test_checkbox.isChecked(),
         }
 
     def collect_train_parameters(self):
         p = self.collect_common_parameters()
-        p["epochs"] = int(self.ui.training_epochs_input.text())
         return p
 
     # ---------------- Actions ----------------
@@ -362,26 +384,28 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         if not self.all_valid():
             QtWidgets.QMessageBox.warning(self, "Invalid input")
             return
-        cfg = self.collect_train_parameters()
-        workspace.narma_config = cfg
+        config = self.collect_train_parameters()
+        workspace.narma_config = config
 
         try:
             # Create a new NARMA-L2 controller based on the saved config
-            model = NARMA_L2_Controller(
-                ny=cfg["delay_out"],
-                nu=cfg["delay_in"],
-                hidden=cfg["hidden"],
-                max_control=cfg["max_in_l"],
-                min_control=cfg["min_in_l"],
-                max_output=cfg["min_in_r"],
-                min_output=cfg["max_in_r"],
-                epochs=cfg.get("epochs", 200),
-                lr=cfg.get("learning_rate", 1e-4),
-                default_model=False,
+            workspace.narma_model = NARMA_L2_Controller(
+                ny=config["ny"],
+                nu=config["nu"],
+                hidden=config["hidden_size"],
+                epsilon=config["learning_rate"],
+                max_control=config["max_control"],
+                min_control=config["min_control"],
+                max_output=config["max_output"],
+                min_output=config["min_output"],
+                epochs=config["training_epochs"],
+                lr=config["learning_rate"],
+                batch_size=config["backprop_batch_size"],
+                patience=config["patience"],
+                default_model=False
             )
-            workspace.narma_model = model
-            workspace.temp_narma_model = copy.deepcopy(model)
             QtWidgets.QMessageBox.information(self, "Config Saved", "Config saved and new NARMA model created.")
+            workspace.first_save_config = True
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Could not create NARMA model:\n{e}")
 
@@ -408,8 +432,8 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.information(self, "Exported", "Network weights exported successfully.")
 
     def handle_save_model(self):
-        if workspace.narma_model is None:
-            QtWidgets.QMessageBox.warning(self, "No Training Session", "No active training session to save model from.")
+        if workspace.narma_model is None or workspace.temp_narma_model is None:
+            QtWidgets.QMessageBox.warning(self, "No Model", "No trained model available to save.")
             return
         else:
             workspace.narma_model = copy.deepcopy(workspace.temp_narma_model)

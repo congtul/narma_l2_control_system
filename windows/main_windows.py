@@ -221,6 +221,8 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         # --- Bắt đầu thread ---
         self.sim_worker.running = True
         if workspace.training_online:
+            if not hasattr(self, "online_worker") or not hasattr(self, "online_thread"):
+                self.init_workers()
             self.online_worker.running = True
 
         self.sim_thread.start()
@@ -262,14 +264,14 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
 
         # Reset workers
         self.init_workers()
-        self.restart_onlinne_option = True
+        self.restart_online_option = True
 
         if hasattr(self, "sim_worker"):
             self.sim_worker.reset()  # reset clock
 
 
-        if workspace.training_online and hasattr(self, "online_worker"):
-            self.online_worker.reset()
+        # if workspace.training_online and hasattr(self, "online_worker"):
+        #     self.online_worker.reset()
 
         # Xóa đồ thị nếu có hàm clear
         if hasattr(self.output_window, "clear_graph"):

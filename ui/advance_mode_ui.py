@@ -30,28 +30,9 @@ class Ui_MainWindow(object):
         font.setFamily("Arial")
         self.label.setFont(font)
         self.label.setObjectName("label")
-        self.Import_btn = QtWidgets.QPushButton(self.centralwidget)
-        self.Import_btn.setGeometry(QtCore.QRect(280, 210, 191, 91))
         font = QtGui.QFont()
         font.setFamily("Arial")
         font.setPointSize(10)
-        self.Import_btn.setFont(font)
-        self.Import_btn.setStyleSheet("QPushButton {\n"
-"    background-color: #7FDEFF;   /* Optional background color */\n"
-"    border-radius: 20px;          /* Optional: rounded corners */\n"
-"}")
-        self.Import_btn.setObjectName("Import_btn")
-        self.Clear_code_btn = QtWidgets.QPushButton(self.centralwidget)
-        self.Clear_code_btn.setGeometry(QtCore.QRect(10, 470, 141, 51))
-        font = QtGui.QFont()
-        font.setPointSize(10)
-        self.Clear_code_btn.setFont(font)
-        self.Clear_code_btn.setStyleSheet("QPushButton {\n"
-"    background-color: #0fac04;   /* Optional background color */\n"
-"    border-radius: 20px;          /* Optional: rounded corners */\n"
-"\n"
-"}")
-        self.Clear_code_btn.setObjectName("Clear_code_btn")
         self.Apply_advancemode_btn = QtWidgets.QPushButton(self.centralwidget)
         self.Apply_advancemode_btn.setGeometry(QtCore.QRect(460, 480, 161, 41))
         font = QtGui.QFont()
@@ -76,6 +57,38 @@ class Ui_MainWindow(object):
 "\n"
 "}rgb(255, 255, 255)")
         self.OK_advancemode_btn.setObjectName("OK_advancemode_btn")
+        self.GeneratorText = QtWidgets.QPlainTextEdit(self.centralwidget)
+        self.GeneratorText.setGeometry(QtCore.QRect(280, 160, 400, 250))
+
+        # Font monospace chuẩn code
+        font = QtGui.QFont()
+        font.setFamily("Consolas")
+        font.setPointSize(11)
+        self.GeneratorText.setFont(font)
+
+        # Không tự xuống dòng
+        self.GeneratorText.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+
+        # Thiết lập tab = 4 spaces chuẩn Python
+        metrics = QtGui.QFontMetrics(font)
+        self.GeneratorText.setTabStopDistance(4 * metrics.horizontalAdvance(' '))
+        self.GeneratorText.setGeometry(QtCore.QRect(280, 160, 400, 250))
+        font = QtGui.QFont()
+        font.setFamily("Consolas")
+        font.setPointSize(10)
+        self.GeneratorText.setFont(font)
+        self.GeneratorText.setObjectName("GeneratorText")
+
+        template = (
+        "def generator(t):\n"
+        "    # User-defined reference signal\n"
+        "    # Example:\n"
+        "    # output = sin(t)\n"
+        "    # End User-defined reference signal\n"
+        "    output = 150*np.sin(2*t)\n"
+        "    return output\n"
+        )
+        self.GeneratorText.setPlainText(template)
         self.Status_import_label = QtWidgets.QLabel(self.centralwidget)
         self.Status_import_label.setGeometry(QtCore.QRect(20, 340, 271, 31))
         self.Status_import_label.setText("")
@@ -97,7 +110,5 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.label_advancemode.setText(_translate("MainWindow", "ADVANCE MODE"))
         self.label.setText(_translate("MainWindow", "Please import your code"))
-        self.Import_btn.setText(_translate("MainWindow", "IMPORT"))
-        self.Clear_code_btn.setText(_translate("MainWindow", "CLEAR"))
         self.Apply_advancemode_btn.setText(_translate("MainWindow", "Apply"))
         self.OK_advancemode_btn.setText(_translate("MainWindow", "OK"))

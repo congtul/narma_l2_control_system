@@ -1,10 +1,10 @@
 from PyQt5 import QtWidgets, QtGui
-
+from backend.system_workspace import workspace
 
 class OnlineTrainingConfigDialog(QtWidgets.QDialog):
     """
     Collects online training configuration before starting simulation.
-    Fields: model, learning rate, batch size, epoch count.
+    Fields: learning rate, batch size, epoch count.
     """
 
     def __init__(self, parent=None):
@@ -14,9 +14,6 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
         self._config = {"training_online": True}
 
         # Inputs
-        self.model_edit = QtWidgets.QLineEdit(self)
-        self.model_edit.setPlaceholderText("Model name or path")
-
         self.lr_edit = QtWidgets.QLineEdit(self)
         self.lr_edit.setValidator(QtGui.QDoubleValidator(bottom=0.0))
         self.lr_edit.setPlaceholderText("Learning rate (e.g. 5e-5)")
@@ -37,7 +34,6 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
 
         # Layout
         form = QtWidgets.QFormLayout()
-        form.addRow("Model:", self.model_edit)
         form.addRow("Learning rate:", self.lr_edit)
         form.addRow("Batch size:", self.batch_edit)
         form.addRow("Epoch:", self.epoch_edit)
@@ -51,15 +47,18 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
         layout.addLayout(form)
         layout.addLayout(btn_row)
 
+        self.lr_edit.setText(workspace.online_training_config.get("lr").__str__())
+        self.batch_edit.setText(workspace.online_training_config.get("batch_size").__str__())
+        self.epoch_edit.setText(workspace.online_training_config.get("epoch").__str__())
+        self.start_btn.setEnabled(self._inputs_valid())
         # Signals
-        for w in [self.model_edit, self.lr_edit, self.batch_edit, self.epoch_edit]:
+        for w in [self.lr_edit, self.batch_edit, self.epoch_edit]:
             w.textChanged.connect(self._update_start_enabled)
+
         self.start_btn.clicked.connect(self._accept_online)
         self.offline_btn.clicked.connect(self._accept_offline)
 
     def _inputs_valid(self) -> bool:
-        if not self.model_edit.text().strip():
-            return False
         for widget in [self.lr_edit, self.batch_edit, self.epoch_edit]:
             text = widget.text().strip()
             if not text:
@@ -79,7 +78,6 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
             return
         self._config = {
             "training_online": True,
-            "model": self.model_edit.text().strip(),
             "lr": float(self.lr_edit.text().strip()),
             "batch_size": int(self.batch_edit.text().strip()),
             "epoch": int(self.epoch_edit.text().strip()),
@@ -87,10 +85,8 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
         self.accept()
 
     def _accept_offline(self):
-        # Offline training: disable online updates and close
         self._config = {
             "training_online": False,
-            "model": self.model_edit.text().strip(),
             "lr": self.lr_edit.text().strip(),
             "batch_size": self.batch_edit.text().strip(),
             "epoch": self.epoch_edit.text().strip(),

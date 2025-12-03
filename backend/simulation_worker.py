@@ -46,58 +46,8 @@ class SimulationWorker(QObject):
     def run(self):
         while (self.running) and (self.t <= workspace.run_time):
             # reference at current step and next step
-            r = 100*np.sin(5*self.t)               # r(k)
-
-            T = workspace.run_time
-            # # profile 1
-            # if t < 0.1 * T:
-            #     r = 50
-            # elif t < 0.2 * T:
-            #     r = 100
-            # elif t < 0.3 * T:
-            #     r = -50
-            # elif t < 0.4 * T:
-            #     r = 0
-            # elif t < 0.55 * T:
-            #     r = 75
-            # elif t < 0.70 * T:
-            #     r = -100
-            # elif t < 0.85 * T:
-            #     r = 120
-            # else:
-            #     r = 20
-
-            # profile 2
-            # if t < 0.15 * T:
-            #     r = 0
-            # elif t < 0.30 * T:
-            #     r = 50 * (t / (0.30*T))     # ramp lên 50
-            # elif t < 0.45 * T:
-            #     r = 50
-            # elif t < 0.60 * T:
-            #     r = 50 - 100 * ( (t-0.45*T) / (0.15*T) )    # ramp xuống -50
-            # elif t < 0.75 * T:
-            #     r = -50
-            # else:
-            #     r = 0
-
-            # profile 3
-            # if t < 0.1*T:
-            #     r = 0
-            # elif t < 0.2*T:
-            #     r = 50
-            # elif t < 0.35*T:
-            #     r = 120
-            # elif t < 0.50*T:
-            #     r = -60
-            # elif t < 0.65*T:
-            #     r = 80
-            # elif t < 0.80*T:
-            #     r = -120
-            # elif t < 0.9*T:
-            #     r = 40
-            # else:
-            #     r = 0
+            # r = 100*np.sin(5*self.t)
+            r = np.interp(self.t, workspace.reference['t'], workspace.reference['ref'])               # r(k)
 
             self.y_hist_t = torch.tensor(self.y_hist, dtype=torch.float32)
             self.u_hist_t = torch.tensor(self.u_hist, dtype=torch.float32)
@@ -126,9 +76,9 @@ class SimulationWorker(QObject):
             self.data_ready.emit(self.t, r, self.y, y_pred, u)
             time.sleep(workspace.dt)
             self.t += workspace.dt
-            print("t from worker:", self.t)
+            # print("t from worker:", self.t)
 
-        print(f"Simulation worker finished. Total time: {self.t:.2f} s, {self.running=}")
+        # print(f"Simulation worker finished. Total time: {self.t:.2f} s, {self.running=}")
         self.finished.emit()
 
     def stop(self):

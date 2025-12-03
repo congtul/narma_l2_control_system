@@ -29,6 +29,8 @@ class SystemWorkspace:
         }
         self.training_online = False
         self.set_default_online_training_config()
+        self.temp_narma_model = None  # for save model preview
+        self.first_save_config = False
 
         # ---------------- Reference signal ----------------
         self.reference = {
@@ -36,6 +38,7 @@ class SystemWorkspace:
             "params": {},          # dict of signal parameters
             "buffer": deque(maxlen=10000)  # generated signal
         }
+        self.num_steps_random = 5  # for random reference
 
         # ---------------- Runtime simulation buffers ----------------
         self.simulation = {
@@ -171,6 +174,8 @@ class SystemWorkspace:
             patience=config["patience"],
             default_model=True
         )
+        self.narma_config = config
+        print("[INFO] Default NARMA-L2 model created.")
 
     def set_default_online_training_config(self):
         self.online_training_config = {

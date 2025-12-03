@@ -4,6 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.normal_mode_ui import Ui_MainWindow as Ui_Normal
 import pyqtgraph as pg
 import numpy as np
+from backend.system_workspace import workspace
 
 class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
     saved_mode = None
@@ -164,25 +165,28 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
             }
 
             # Parameters
-            num_steps = 10  # số đoạn step
+            num_steps = workspace.num_steps_random
             t_max = 10
             t = np.linspace(0, t_max, 1000)
             step_len = len(t) // num_steps
 
             # Tạo các giá trị ngẫu nhiên cho từng step
-            y = np.zeros_like(t)
+            ref = np.zeros_like(t)
             rand_values = np.random.uniform(min_vel, max_vel, size=num_steps)
             for i in range(num_steps):
                 start = i * step_len
                 end = (i+1) * step_len if i < num_steps-1 else len(t)
-                y[start:end] = rand_values[i]
+                ref[start:end] = rand_values[i]
 
-            self.plot_graph(t, y, title="Random Generator Preview")
+            self.plot_graph(t, ref, title="Random Generator Preview")
 
             self.Status_nor_label.setText("Random values applied successfully!")
             self.Status_nor_label.setStyleSheet("color: green; font-weight: bold;")
             self.Apply_normalmode_btn.setEnabled(False)
-            print(f"Quang Debug random values")
+            workspace.reference['type'] = 'random'
+            workspace.reference['t'] = t
+            workspace.reference['ref'] = ref
+            print(f"reference values saved to workspace")
             return ("random", max_vel, min_vel, None, None)
     
         elif self.active_mode == "manual":
@@ -195,20 +199,21 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
             }
 
             if step_time:
-                #TODO: Cân nhắc thêm thời gian cuối nếu cần
-                t_max = 15
+                t_max = workspace.run_time
                 t = np.linspace(0, t_max, 1000)
-            y = np.zeros_like(t)
+            ref = np.zeros_like(t)
             for i in range(len(step_time)-1):
-                y[(t >= step_time[i]) & (t < step_time[i+1])] = step_value[i]
+                ref[(t >= step_time[i]) & (t < step_time[i+1])] = step_value[i]
             if step_time:
-                y[t >= step_time[-1]] = step_value[-1]
-
-            self.plot_graph(t, y, title="Manual Generator Preview")
+                ref[t >= step_time[-1]] = step_value[-1]
+            self.plot_graph(t, ref, title="Manual Generator Preview")
             self.Status_nor_label.setText("Manual values applied successfully!")
             self.Status_nor_label.setStyleSheet("color: green; font-weight: bold;")
             self.Apply_normalmode_btn.setEnabled(False)
-            print(f"Quang Debug manual values")
+            workspace.reference['type'] = 'manual'
+            workspace.reference['t'] = t
+            workspace.reference['ref'] = ref
+            print(f"reference values saved to workspace")
 
             return ("manual", None, None, step_time, step_value)
         
@@ -238,13 +243,13 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
                 self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
                 return False
 
-            if max_vel > 12:
-                self.Status_nor_label.setText("Max velocity cannot exceed 12!")
+            if max_vel > workspace.narma_config["max_output"]:
+                self.Status_nor_label.setText(f"Max velocity cannot exceed {workspace.narma_config['max_output']}!")
                 self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
                 return False
 
-            if min_vel < -12:
-                self.Status_nor_label.setText("Min velocity cannot be less than -12!")
+            if min_vel < workspace.narma_config["min_output"]:
+                self.Status_nor_label.setText(f"Min velocity cannot be less than {workspace.narma_config['min_output']}!")
                 self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
                 return False
 
@@ -278,8 +283,8 @@ class NormalModeWindow(QtWidgets.QMainWindow, Ui_Normal):
                 return False
 
             # Value must be within -30 to 30
-            if any(v < -30 or v > 30 for v in sv):
-                self.Status_nor_label.setText("Step values must be between -30 and 30!")
+            if any(v < workspace.narma_config["min_output"] or v > workspace.narma_config["max_output"] for v in sv):
+                self.Status_nor_label.setText(f"Step values must be between {workspace.narma_config['min_output']} and {workspace.narma_config['max_output']}!")
                 self.Status_nor_label.setStyleSheet("color: red; font-weight: bold;")
                 return False
 
