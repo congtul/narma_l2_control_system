@@ -27,8 +27,8 @@ class SystemWorkspace:
             "u": [],
             "y": [],
         }
-        self.training_online = True
-        self.online_training_config = {}
+        self.training_online = False
+        self.set_default_online_training_config()
 
         # ---------------- Reference signal ----------------
         self.reference = {
@@ -121,7 +121,7 @@ class SystemWorkspace:
         return num, den
     
     def get_default_sampling_time(self):
-        return 0
+        return 0.01
     
     def get_default_runtime(self):
         return 10
@@ -171,6 +171,13 @@ class SystemWorkspace:
             patience=config["patience"],
             default_model=True
         )
+
+    def set_default_online_training_config(self):
+        self.online_training_config = {
+            "lr": 5e-5,
+            "batch_size": 5,
+            "epoch": 2
+        }
 
     # ---------------- Sampling time helpers ----------------
     def set_sampling_time(self, dt: float):

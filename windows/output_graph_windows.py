@@ -216,6 +216,17 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
             y = np.array(self.data_y)
             yp = np.array(self.data_pred)
             corr = np.corrcoef(y, yp)[0, 1] if len(y) > 2 else np.nan
+        else:
+            RMSE_track = 0.0
+            MAE_track = 0.0
+            steady_err_track = 0.0
+            mean_abs_u_track = 0.0
+            rms_u_track = 0.0
+
+            RMSE_pred = 0.0
+            MAE_pred = 0.0
+            corr = 0.0
+            bias = 0.0
 
         # cập nhật text
         self.RMSE_track.setText(f"{RMSE_track:.3f}" if not np.isnan(RMSE_track) else "-")

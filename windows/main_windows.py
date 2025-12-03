@@ -13,6 +13,7 @@ from windows.online_training_config_window import OnlineTrainingConfigDialog
 from backend.simulation_worker import SimulationWorker
 from windows.login_window import LoginDialog
 from backend.system_workspace import workspace
+from backend.online_training_worker import OnlineTrainingWorker
 
 
 class MainApp(QtWidgets.QMainWindow, Ui_Main):
@@ -28,6 +29,8 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         # Sampling time is provided after login; keep field read-only and show current value
         self.sampling_time_edit.setReadOnly(True)
         self.sampling_time_edit.setText(f"{workspace.dt:.6f}")
+        self.Run_time_input.setText(f"{workspace.run_time:.2f}")  # default run time
+        self.restart_online_option = True  # flag to show online training config dialog on next run
 
         # Login / Logout state
         self.current_user = None  # {"username": str, "role": "admin|user"}
@@ -144,7 +147,8 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
     def toggle_run(self):
         if not self._ensure_access():
             return
-        if not self.running:
+        if not self.running and self.restart_online_option:
+            self.restart_online_option = False
             cfg_dialog = OnlineTrainingConfigDialog(self)
             result = cfg_dialog.exec_()
             if result != QtWidgets.QDialog.Accepted:
@@ -161,44 +165,92 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             self.stop_simulation()
         self.update_run_button()
 
+    def init_workers(self):
+        # === Tạo thread + worker ===
+        # --- Simulation Worker và Thread ---
+        self.sim_thread = QThread()
+        self.sim_worker = SimulationWorker()
+        self.sim_worker.moveToThread(self.sim_thread)
+        if workspace.training_online:
+            print("Configuring online training worker...")
+            # --- Online training thread và worker ---
+            self.online_thread = QThread()
+            self.online_worker = OnlineTrainingWorker(model=workspace.narma_model, 
+                                                    lr=workspace.online_training_config["lr"],
+                                                    batch_size=workspace.online_training_config["batch_size"],
+                                                    epoch=workspace.online_training_config["epoch"])
+            self.online_worker.moveToThread(self.online_thread)
+            self.online_thread.started.connect(self.online_worker.run)
+            self.sim_worker.finished.connect(self.online_thread.quit)
+            # Signal-slot
+            self._yk_last = 0
+
+        def on_data_ready(t, r, y, y_pred, u):
+            # Push lên OutputGraphWindow
+            self.output_window.append_data(t, r, y, y_pred, u)
+
+            # Nếu bật online training
+            if workspace.training_online:
+                self.online_worker.push_sample(self._yk_last, u, y)
+                self._yk_last = y
+
+        self.sim_thread.started.connect(self.sim_worker.run)
+        self.sim_worker.data_ready.connect(on_data_ready)
+        self.sim_worker.finished.connect(self.sim_thread.quit)
+        self.sim_worker.finished.connect(self.stop_simulation)
+
+
+
     def start_simulation(self):
         """Bắt đầu giả lập dữ liệu real-time cho OutputGraphWindow"""
         # Lấy thời gian chạy từ QLineEdit
         try:
-            run_time = 600.0
+            run_time = float(self.Run_time_input.text())
             if run_time <= 0: raise ValueError
         except ValueError:
             QtWidgets.QMessageBox.warning(self, "Invalid Input", "Please enter a valid positive run time.")
             self.running = False
             self.update_run_button()
             return
-        
         workspace.run_time = run_time
 
-        # === Tạo thread + worker ===
-        self.sim_thread = QThread()
-        self.sim_worker = SimulationWorker()
-        self.sim_worker.moveToThread(self.sim_thread)
+        # --- Khởi tạo worker nếu chưa có ---
+        if not hasattr(self, "sim_worker") or not hasattr(self, "sim_thread"):
+            self.init_workers()
 
-        # Signal-slot
-        self.sim_thread.started.connect(self.sim_worker.run)
-        self.sim_worker.data_ready.connect(self.output_window.append_data)
-        self.sim_worker.finished.connect(self.sim_thread.quit)
+        # --- Bắt đầu thread ---
+        self.sim_worker.running = True
+        if workspace.training_online:
+            self.online_worker.running = True
 
         self.sim_thread.start()
+        if workspace.training_online:
+            self.online_thread.start()
 
-        # === Timer dừng theo run_time ===
-        self.stop_timer = QtCore.QTimer(self)
-        self.stop_timer.setSingleShot(True)
-        self.stop_timer.timeout.connect(self.stop_simulation)
-        self.stop_timer.start(int(run_time * 1000))
+        print("Simulation started.")
+        if workspace.training_online:
+            print("Online training started.")
 
-        print(f"[INFO] Simulation started for {run_time} seconds.")
+        print(f"[INFO] Simulation started for {workspace.run_time} seconds.")
     
     def stop_simulation(self):
-        """Dừng mô phỏng"""
+        """Stop simulation + online training"""
+
+        # --- Stop simulation worker ---
         if hasattr(self, "sim_worker"):
-            self.sim_worker.stop()  
+            self.sim_worker.stop()
+        if hasattr(self, "sim_thread"):
+            self.sim_thread.quit()
+            self.sim_thread.wait()
+
+        if workspace.training_online:
+            # --- Stop online training worker ---
+            if hasattr(self, "online_worker"):
+                self.online_worker.stop()
+            if hasattr(self, "online_thread"):
+                self.online_thread.quit()
+                self.online_thread.wait()
+
         self.running = False
         self.update_run_button()
         print("[INFO] Simulation stopped.")
@@ -208,8 +260,16 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         # Dừng tất cả các timer đang chạy
         self.stop_simulation()
 
+        # Reset workers
+        self.init_workers()
+        self.restart_onlinne_option = True
+
         if hasattr(self, "sim_worker"):
             self.sim_worker.reset()  # reset clock
+
+
+        if workspace.training_online and hasattr(self, "online_worker"):
+            self.online_worker.reset()
 
         # Xóa đồ thị nếu có hàm clear
         if hasattr(self.output_window, "clear_graph"):

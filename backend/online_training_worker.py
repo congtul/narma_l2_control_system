@@ -7,7 +7,8 @@ class OnlineTrainingWorker(QObject):
     def __init__(self, model, lr=5e-5, batch_size=5, epoch=2):
         super().__init__()
         self.model = model
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        if workspace.training_online:
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn = torch.nn.MSELoss()
 
         # --- NARMA histories ---
