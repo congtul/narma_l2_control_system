@@ -161,6 +161,7 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
         # Tạo cửa sổ plot riêng
         self.plot_win = TrainingPlotWindow(parent=self)
         self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        self.plot_win.destroyed.connect(lambda: setattr(self, "plot_win", None))
 
         self.loss_win = LossPlotWindow(self)
         self.loss_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
@@ -171,8 +172,7 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
         self.demo_history = {"t": [], "inp": [], "plant": [], "err": [], "nn": []}
 
         # --- Gắn signal ---
-        self.ui.performance_btn.clicked.connect(self._demo_update)
-        self.ui.performance_btn.clicked.connect(self.plot_win.show)
+        self.ui.performance_btn.clicked.connect(self._show_performance)
         self.ui.stop_btn.clicked.connect(self._stop_training)
         self.ui.cancel_btn.clicked.connect(self.close)
 
@@ -204,6 +204,17 @@ class ModelTrainWindow(QtWidgets.QMainWindow):
 
         # Start training
         self.worker.start()
+
+    def _ensure_plot_window(self):
+        if self.plot_win is None:
+            self.plot_win = TrainingPlotWindow(parent=self)
+            self.plot_win.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+            self.plot_win.destroyed.connect(lambda: setattr(self, "plot_win", None))
+
+    def _show_performance(self):
+        self._ensure_plot_window()
+        self._demo_update()
+        self.plot_win.show()
 
     def _epoch_callback(self, epoch, train_loss, val_loss):
         # Update progress bar
