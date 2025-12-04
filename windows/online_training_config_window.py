@@ -7,8 +7,9 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
     Fields: learning rate, batch size, epoch count.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, current_role=None):
         super().__init__(parent)
+        self.current_role = current_role
         self.setWindowTitle("Online Training Config")
         self.setModal(True)
         self._config = {"training_online": True}
@@ -47,9 +48,9 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
         layout.addLayout(form)
         layout.addLayout(btn_row)
 
-        self.lr_edit.setText(workspace.online_training_config.get("lr").__str__())
-        self.batch_edit.setText(workspace.online_training_config.get("batch_size").__str__())
-        self.epoch_edit.setText(workspace.online_training_config.get("epoch").__str__())
+        self.lr_edit.setText(str(workspace.online_training_config.get("lr", 5e-5)))
+        self.batch_edit.setText(str(workspace.online_training_config.get("batch_size", 5)))
+        self.epoch_edit.setText(str(workspace.online_training_config.get("epoch", 2)))
         self.start_btn.setEnabled(self._inputs_valid())
         # Signals
         for w in [self.lr_edit, self.batch_edit, self.epoch_edit]:
@@ -57,6 +58,7 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
 
         self.start_btn.clicked.connect(self._accept_online)
         self.offline_btn.clicked.connect(self._accept_offline)
+        self._apply_role_permissions()
 
     def _inputs_valid(self) -> bool:
         for widget in [self.lr_edit, self.batch_edit, self.epoch_edit]:
@@ -95,3 +97,14 @@ class OnlineTrainingConfigDialog(QtWidgets.QDialog):
 
     def get_config(self):
         return self._config
+
+    def _apply_role_permissions(self):
+        """
+        Non-admin users cannot edit online training hyperparameters; they use provided defaults.
+        """
+        if self.current_role == "admin":
+            return
+        for w in [self.lr_edit, self.batch_edit, self.epoch_edit]:
+            w.setReadOnly(True)
+            w.setEnabled(True)
+            w.setStyleSheet("background-color: #b3b1b1;")

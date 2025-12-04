@@ -107,6 +107,12 @@ class Ui_MainWindow(object):
 "    color: #000000;              /* Text color */\n"
 "}")
         self.Run_time_input.setObjectName("Run_time_input")
+        self.Run_time_set_btn = QtWidgets.QPushButton(self.centralwidget)
+        self.Run_time_set_btn.setGeometry(QtCore.QRect(890, 68, 60, 24))
+        font = QtGui.QFont()
+        font.setPointSize(8)
+        self.Run_time_set_btn.setFont(font)
+        self.Run_time_set_btn.setObjectName("Run_time_set_btn")
         self.Run_time_label = QtWidgets.QLabel(self.centralwidget)
         self.Run_time_label.setGeometry(QtCore.QRect(610, 70, 111, 16))
         font = QtGui.QFont()
@@ -132,3 +138,4 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.Run_time_label.setText(_translate("MainWindow", "RUN TIME (s)"))
+        self.Run_time_set_btn.setText(_translate("MainWindow", "Set"))

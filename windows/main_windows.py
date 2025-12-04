@@ -131,9 +131,12 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
         self.user_guide_window.show()
 
     def open_ann_controller_window(self):
-        if not self._ensure_access(require_admin=True):
+        if not self._ensure_access():
             return
-        self.model_config_window = ModelConfigWindow(parent=self)
+        role = None
+        if self.current_user:
+            role = self.current_user.get("role")
+        self.model_config_window = ModelConfigWindow(parent=self, current_role=role)
         self.model_config_window.show()
 
     def closeEvent(self, event):
@@ -154,7 +157,10 @@ class MainApp(QtWidgets.QMainWindow, Ui_Main):
             return
         if not self.running and self.restart_online_option:
             self.restart_online_option = False
-            cfg_dialog = OnlineTrainingConfigDialog(self)
+            role = None
+            if self.current_user:
+                role = self.current_user.get("role")
+            cfg_dialog = OnlineTrainingConfigDialog(self, current_role=role)
             result = cfg_dialog.exec_()
             if result != QtWidgets.QDialog.Accepted:
                 return

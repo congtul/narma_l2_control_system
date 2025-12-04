@@ -14,6 +14,11 @@ from backend.system_workspace import workspace
 class PlantModelWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        parent_role = None
+        if hasattr(parent, "current_user") and parent.current_user:
+            parent_role = parent.current_user.get("role")
+        self.current_role = parent_role
+        self._allow_custom = self.current_role == "admin"
 
         # Load UI
         self.ui = Ui_plant_model()
@@ -21,6 +26,8 @@ class PlantModelWindow(QDialog):
 
         # Default model
         self.ui.custom_mode_box.setDisabled(True)
+        if not self._allow_custom:
+            self.ui.custom_box.setDisabled(True)
 
         mode = workspace.plant.get("mode", "dc_motor")
         if mode == "default":
@@ -161,7 +168,10 @@ class PlantModelWindow(QDialog):
     def on_default_checked(self, state):
         is_checked = state == Qt.Checked
         self.ui.dc_motor_box.setDisabled(is_checked)
-        self.ui.custom_box.setDisabled(is_checked)
+        if self._allow_custom:
+            self.ui.custom_box.setDisabled(is_checked)
+        else:
+            self.ui.custom_box.setDisabled(True)
 
         if is_checked:
             defaults = workspace.get_default_dc_motor_params()
@@ -174,6 +184,9 @@ class PlantModelWindow(QDialog):
             self.ui.motor_Td.setText(str(defaults['Td']))
 
     def on_custom_checked(self, state):
+        if not self._allow_custom:
+            self.ui.custom_box.setChecked(False)
+            return
         is_checked = state == Qt.Checked
         self.ui.dc_motor_box.setDisabled(is_checked)
         self.ui.default_box.setDisabled(is_checked)

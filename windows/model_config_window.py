@@ -18,8 +18,9 @@ from backend.system_workspace import workspace
 class ModelConfigWindow(QtWidgets.QMainWindow):
     """Model configuration window plus utilities."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, current_role=None):
         super().__init__(parent)
+        self.current_role = current_role
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
@@ -36,6 +37,7 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
         self._connect_signals()
         self.restore_saved_parameters()
         self.update_buttons_state()
+        self._apply_role_permissions()
 
         # Placeholder for child window
         self.train_win = None
@@ -484,6 +486,26 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             self.ui.use_validation_checkbox.setChecked(bool(cfg.get("use_val")))
         if "use_test" in cfg:
             self.ui.use_test_checkbox.setChecked(bool(cfg.get("use_test")))
+
+    # ---------------- Permissions ----------------
+    def _apply_role_permissions(self):
+        """
+        Non-admin users can adjust training data/parameters but cannot manually edit network architecture;
+        they can still apply defaults to populate those fields.
+        """
+        if self.current_role == "admin":
+            return
+
+        for w in [
+            self.ui.hidden_layers_input,
+            self.ui.delayed_inputs_input,
+            self.ui.delayed_outputs_input,
+        ]:
+            w.setReadOnly(True)
+            w.setEnabled(True)
+            w.setStyleSheet("background-color: #b3b1b1;")
+        # Keep default button enabled so they can load default architecture
+        # self.ui.default_btn.setEnabled(True)
 
     def closeEvent(self, event):
         if self.train_win is not None and self.train_win.isVisible():
