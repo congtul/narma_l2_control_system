@@ -304,27 +304,34 @@ class ModelConfigWindow(QtWidgets.QMainWindow):
             self,
             "Select Network Weight File",
             "",
-            "JSON Files (*.pth)"
+            "Pytorch Files (*.pth)"
         )
         if not path:
             return
-        
-        utils.load_weights_from_file(workspace.narma_model, path)
-        return
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Load Error", f"Could not read JSON file:\n{e}")
-            return
-
-        ok, msg = self._validate_weight_file(cfg)
-        if not ok:
-            QtWidgets.QMessageBox.warning(self, "Invalid Weight File", msg)
-            return
 
         try:
-            self._store_weight_file(cfg)
+            state_dict = torch.load(path, map_location="cpu")
+            # Validate shapes before loading to avoid noisy torch traceback
+            f_state = state_dict.get("f")
+            g_state = state_dict.get("g")
+            if not f_state or not g_state:
+                raise ValueError("Missing 'f' or 'g' keys in checkpoint.")
+
+            def _check_shapes(target_module, incoming_state):
+                for name, param in incoming_state.items():
+                    if name not in target_module.state_dict():
+                        raise ValueError(f"Unexpected key '{name}' in checkpoint.")
+                    tgt = target_module.state_dict()[name]
+                    if tgt.shape != param.shape:
+                        raise ValueError(
+                            f"Shape mismatch for {name}: checkpoint {tuple(param.shape)} vs model {tuple(tgt.shape)}"
+                        )
+
+            _check_shapes(workspace.narma_model.f, f_state)
+            _check_shapes(workspace.narma_model.g, g_state)
+
+            workspace.narma_model.f.load_state_dict(f_state)
+            workspace.narma_model.g.load_state_dict(g_state)
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Load Error", f"Failed to load weights:\n{e}")
             return
