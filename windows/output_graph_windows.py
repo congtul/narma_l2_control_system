@@ -81,6 +81,7 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
         super().__init__(parent)
         self.setupUi(self)
         self._init_graphs()
+        self.scale_to_screen()
 
         # buffer dữ liệu
         self.data_t, self.data_ref, self.data_y, self.data_pred, self.data_u = [], [], [], [], []
@@ -106,6 +107,31 @@ class OutputGraphWindow(QtWidgets.QWidget, Ui_output_graph):
         # Button actions
         self.close_button.clicked.connect(self.close)
         self.save_graph_button.clicked.connect(self.save_graph_as)
+
+    def scale_to_screen(self):
+        """Shrink the window to fit available screen space (similar to plant_model scaling)."""
+        screen = QtWidgets.QApplication.primaryScreen()
+        if not screen:
+            return
+        avail = screen.availableGeometry()
+        w0, h0 = self.width(), self.height()
+        factor = min(avail.width() / w0, avail.height() / h0, 1.0)
+        if factor >= 1.0:
+            return
+        self.resize(int(w0 * factor), int(h0 * factor))
+        for w in self.findChildren(QtWidgets.QWidget):
+            g = w.geometry()
+            w.setGeometry(
+                int(g.x() * factor),
+                int(g.y() * factor),
+                int(g.width() * factor),
+                int(g.height() * factor),
+            )
+            f = w.font()
+            ps = f.pointSize()
+            if ps > 0:
+                f.setPointSize(max(6, int(ps * factor)))
+                w.setFont(f)
 
     def _init_graphs(self):
         # Tracking
@@ -326,4 +352,3 @@ if __name__ == "__main__":
     print("Online training started.")
 
     sys.exit(app.exec_())
-
