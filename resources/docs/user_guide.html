@@ -47,29 +47,31 @@
 <p>
 Welcome to our educational software for intelligent control systems.  
 This application is designed for learners who wish to understand the essential functional blocks of an intelligent control system.  
-To make the system operation easier to visualize, we use a DC motor as the default simulation model.  
+To make system operations easier to visualize, we use a DC motor as the default simulation model.  
 However, if you want to simulate another control plant, feel free to use our tool – it is fully customizable.  
 Below is a detailed explanation of how our system works.
 </p>
 
 <p>
-Before diving into the four main components, please define the sampling time in the <b>Ts</b> field.  
+Before exploring the four main components, please log in by clicking the <b>“Login”</b> button in the top-right corner of the interface.  
+After logging in, define the sampling time in the <b>Ts</b> field.  
 This parameter will be synchronized across all blocks in the system.
 </p>
 
 <div class="section">
-  <h2>1. Desired Signal</h2>
-  <ul>
-    <li>This is where you define the desired output values of the plant over time.</li>
-    <li>You can refer to various <a href="https://www.pmdcorp.com/resources/type/articles/get/s-curve-profiles-deep-dive-article" target="_blank">motion planning</a> methods for motor speed trajectory design.</li>
-  </ul>
+  <h2>1. Reference Velocity (Input)</h2>
+
+  <p>This is where you define the desired output values of the plant over time.</p>
+  <p>You can refer to various <a href="https://www.pmdcorp.com/resources/type/articles/get/s-curve-profiles-deep-dive-article" target="_blank">motion planning</a> methods for motor speed trajectory design.</p>
 
   <h3>Supported Modes</h3>
+
   <ul>
     <li><b>Normal Mode:</b>
       <ul>
         <li><b>Random Generator:</b> Generates random desired signals.  
         For safety, please provide the <b>minimum</b> and <b>maximum</b> output range of your control plant (e.g., maximum motor speed).</li>
+
         <li><b>Manual Generator:</b> Only step generators are supported.  
         Please input two arrays: <code>step_time</code> and <code>step_value</code>.  
         Example:<br>
@@ -78,6 +80,7 @@ This parameter will be synchronized across all blocks in the system.
         The generator will produce output = 0.1 for t&lt;1, output = -0.2 for 1&lt;t&lt;2, etc.</li>
       </ul>
     </li>
+
     <li><b>Advance Mode:</b>  
     In this mode, you can fully define how the reference signal changes over time by editing a pre-defined function.  
     Please do not change the function name, input parameters, or output variable to maintain framework compatibility.
@@ -85,7 +88,7 @@ This parameter will be synchronized across all blocks in the system.
     # User-defined reference signal
     # Example:
     # output = sin(t)
-    # End User-defined reference signal
+    # End user-defined reference signal
     return output
     </code></pre>
     </li>
@@ -94,82 +97,109 @@ This parameter will be synchronized across all blocks in the system.
 
 <div class="section">
   <h2>2. Plant Model (Controlled Object)</h2>
+
   <ul>
-    <li>If you are working with a DC motor, please input the corresponding motor parameters.</li>
+    <li>If you are working with a DC motor, please provide the corresponding motor parameters.</li>
     <li>If you want to test another control plant, check the <b>“Custom Mode”</b> box and input your own transfer function.</li>
     <li>Both methods will generate the final transfer function used by the control system.  
-      Click <b>“Save”</b> to confirm and close the configuration.</li>
+        Click <b>“Save”</b> to confirm and close the configuration.</li>
   </ul>
 </div>
 
 <div class="section">
   <h2>3. Controller Block using NARMA-L2 Model</h2>
+
   <p>
-    This block allows you to design a controller based on the <b>NARMA-L2 model</b>, which is developed from <b>Artificial Neural Networks (NARMA-L2)</b>.
-    If you are not familiar with this concept, please refer to:
+    This block allows you to design a controller based on the <b>NARMA-L2 model</b>, developed using <b>Artificial Neural Networks</b>.  
+    If you are not familiar with this concept, please refer to:  
     <a href="https://ww2.mathworks.cn/help/deeplearning/ug/design-narma-l2-neural-controller-in-simulink.html" target="_blank">MathWorks NARMA-L2 Controller Documentation</a>.
   </p>
 
   <h3>How NARMA-L2 Model Works</h3>
-  <p>The NARMA-L2 model has two main tasks: system identification and control signal computation based on the identified system:</p>
+
+  <p>The NARMA-L2 procedure consists of two stages:</p>
+
   <ul>
     <li><b>Stage 1: System Identification</b>
       <ul>
-        <li>The model observes the response of the plant model based on the input signals.</li>
-        <li>The inputs and corresponding outputs from the plant model form a dataset.</li>
-        <li>This dataset is used to train the NARMA-L2 model so that it can predict the behavior of the plant model for any given input (dynamic system modeling).</li>
+        <li>The model observes the response of the plant model based on input signals.</li>
+        <li>The input-output pairs form a dataset.</li>
+        <li>The dataset is used to train the NARMA-L2 model to predict system behavior (dynamic modeling).</li>
       </ul>
     </li>
+
     <li><b>Stage 2: Control Computation</b>
       <ul>
-        <li>Once the NARMA-L2 model has identified the plant model, it receives the desired system output (desired signal).</li>
-        <li>It then computes the necessary input to the plant model so that the plant can track the desired setpoint.</li>
+        <li>After system identification, the model receives the desired system output.</li>
+        <li>It computes the necessary plant input that makes the system follow the desired output trajectory.</li>
       </ul>
     </li>
   </ul>
 
   <p>
-    Therefore, in order to train the model in this section, please make sure the plant model has been defined.  
-    If not, the <b>“Generate Dataset”</b> button will remain inactive until a plant model is set.  
-    This button works by sending a sequence of random inputs into the plant model and collecting the corresponding outputs to create a dataset for the NARMA-L2 model.
+    To train the model, ensure the plant model is defined first.  
+    Otherwise, the <b>“Generate Dataset”</b> button will remain inactive.  
+    This function generates random inputs for the plant and collects outputs to create training data.
   </p>
 
   <ul>
-    <li>For a quick demonstration of how this model works, you can press the <b>“Default”</b> button at the bottom.  
-        This will automatically load our model’s predefined parameters.  
-        You may skip the remaining steps if you just want to see a mock-up result.  
-        However, it’s recommended to adjust the parameters to match your specific control requirements.</li>
+    <li>For a quick demonstration, press the <b>“Default”</b> button.  
+        It loads predefined model parameters.  
+        You may skip the remaining steps if you only want to see a mock-up result.</li>
 
-    <li>Enter your desired NARMA-L2 architecture configuration, including:  
-        <i>Number of hidden layers</i>, <i>Number of delayed plant inputs</i>, and <i>Number of delayed plant outputs</i>.</li>
+    <li>Specify your NARMA-L2 architecture:  
+        number of hidden layers, number of delayed plant inputs, and number of delayed plant outputs  
+        (recommended for advanced users or data scientists).</li>
 
-    <li>If you already have pre-trained network weights, you can skip the training step.  
-        Use the <b>“Import Network Weights”</b> button to load them.  
-        Once successfully imported, a confirmation window will appear, and you may proceed directly to testing.</li>
+    <li>After verifying your architecture, click <b>“Save Config”</b>.  
+        This initializes a new NARMA-L2 model with randomized initial weights.</li>
 
-    <li>If you don’t have weights yet, it is highly recommended to train your model offline first using the <b>Training Data</b> section.</li>
+    <li>If you already have pretrained weights, you may use <b>“Import Weights”</b>.  
+        A confirmation window will appear once loaded.</li>
 
-    <li>If no dataset is available, you can either generate one using the <b>“Generate Data”</b> button or import an existing dataset via <b>“Import Data”</b>.</li>
+    <li>If you do not have a dataset, you can generate one using <b>“Generate Data”</b> or import an existing dataset via <b>“Import Data”</b>.</li>
 
-    <li>Once a dataset is ready, the <b>“Train Network”</b> button will become active, allowing you to start the NARMA-L2 training process.</li>
+    <li>Once a dataset is available, the <b>“Train Network”</b> button becomes active.</li>
 
-    <li>After training is complete, an evaluation window will appear where you can review the model’s performance.  
-        Once satisfied with the results, click <b>“OK”</b> to confirm and apply the trained weights to your model.</li>
+    <li>After training is completed, an evaluation window will appear.  
+        When satisfied, click <b>“Save Model”</b> to apply the trained weights.</li>
+
+    <li>(Optional) You may export datasets or model weights for future use to save time.</li>
   </ul>
 </div>
 
 <div class="section">
   <h2>4. Output Graph Block</h2>
+
   <p>
-    After all configurations are done, press the <b>Start</b> button and observe the results in the graph block.  
-    The system will display the reference tracking response, actual output, and key performance metrics such as rise time, overshoot, and steady-state error.
+<p>
+    After all configurations are complete, press the <b>Start</b> button to run the simulation.
+    You will be prompted to choose between two options: <b>train offline</b> and <b>train online</b>.
+</p>
+
+<p>
+    <b>Train offline</b> means the NARMA-L2 model will <b>not</b> continue learning during run-time.<br>
+    <b>Train online</b> allows the NARMA-L2 model to learn new information during operation, enabling the controller 
+    to adapt to changes in the plant model, whose transfer function may vary over time (as often happens in real-world systems).
+</p>
+
+<p>
+    Users with the <i>(Data scientists only)</i> privilege can manually define the batch size, learning rate, 
+    and number of epochs for online training, while others will use the default online training parameters.
+</p>
+
+<p>
+    The graph block will display the tracking response, actual plant output, and key performance indicators 
+    such as MSE, MAE,...
+</p>
   </p>
 </div>
 
 <div class="section">
   <h2>Final Note</h2>
+
   <p>
-    We hope this tool helps you in learning and experimenting with intelligent control systems using the NARMA-L2 model.  
+    We hope this tool helps you learn and experiment with intelligent control systems using the NARMA-L2 model.  
     Wishing you success in your research and exploration!
   </p>
 </div>
